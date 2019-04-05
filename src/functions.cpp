@@ -7,6 +7,13 @@ void eraseFreeSpace(string& str)
         if (*i == ' ' || *i == '\t')
         {
             str.erase(i);
+            i--;
         }
     }
+}
+
+void numirateToken(string& token, string& buffer, int offset, int& position)
+{
+    position = buffer.find(token, offset);
+    offset += token.length();
 }

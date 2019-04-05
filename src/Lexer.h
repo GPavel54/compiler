@@ -4,11 +4,14 @@
 
 class Lexer
 {
-    vector<exp> expressions;
 public:
     void initializeMap();
     void getType(string& word, string& type);
     void split(const string &s, char delim, vector<string> &elems);
+    Lexer(string path);
+
+    vector<Token> tokens_;
+    vector<exp> expressions_;
 };
 
 #endif

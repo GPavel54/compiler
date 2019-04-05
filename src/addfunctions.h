@@ -7,13 +7,18 @@
 #include <vector>
 #include <regex>
 #include <map>
+#include <iomanip> 
+#include <exception>
+#include "Errors.h"
 
 using namespace std;
 
-struct Location
+struct Token
 {
-    int line;
-    int symb;
+    int row;
+    int col;
+    string name;
+    string token;
 };
 
 struct exp
@@ -23,5 +28,6 @@ struct exp
 };
 
 void eraseFreeSpace(string& str);
+void numirateToken(string& token, string& buffer, int offset, int& position);
 
 #endif

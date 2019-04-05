@@ -7,35 +7,16 @@ int main(int argc, char **argv)
         cout << "Using " << argv[0] << " infile.cs outfile" << endl;
         return 1;
     }
-
-    ifstream in;
-    in.open(argv[1], ifstream::in);
-    if (!in.is_open())
+    try 
     {
-        cout << "Error with opening file " << argv[1] << endl;
-        return 1;
+        Lexer lex(argv[1]);
     }
-    string buffer;
-    Location loc = {0,0};
-    Lexer lex;
-    lex.initializeMap();
-    while (getline(in, buffer))
+    catch (Open_exception& ex)
     {
-        vector<string> elements;
-        lex.split(buffer, ' ', elements);
-        for (auto i = elements.begin(); i < elements.end(); i++)
-        {
-            eraseFreeSpace(*i);
-            if (i->empty())
-            {
-                elements.erase(i);
-                continue;
-            }
-            string type;
-            lex.getType(*i, type);
-            cout << *i << " <- " << type << endl; 
-        }
-        
-        loc.line++;
+        return ex.what();
+    }
+    catch (Wseq_exception& ex)
+    {
+        return ex.what();
     }
 }
