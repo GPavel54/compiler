@@ -1,6 +1,34 @@
 #include "Lexer.h"
 
-Lexer::Lexer(string path)
+Lexer::Lexer()
+{
+    
+}
+
+void Lexer::split(const string &s, char delim, vector<string> &elems)
+{
+    stringstream ss(s);
+    string item;
+    while (getline(ss, item, delim))
+    {
+        elems.push_back(item);
+    }
+}
+
+void Lexer::getType(string &word, string &type)
+{
+    for (auto i = expressions_.begin(); i < expressions_.end(); i++)
+    {
+        if (regex_match(word.c_str(), i->expression))
+        {
+            type = i->name;
+            return;
+        }
+    }
+    type = "Wrong type";
+}
+
+void Lexer::makeTable(string path)
 {
     ifstream in;
     in.open(path, ifstream::in);
@@ -30,8 +58,10 @@ Lexer::Lexer(string path)
                 }
                 while (regex_search(*i, m, j->expression))
                 {
-                    if (i->find(m.str()) != 0)
+                    if (j->name == "Comment")
                     {
+                        tmp.clear();
+                        *i = "";
                         break;
                     }
                     Token tmp = {line, 0, j->name, m.str()};
@@ -44,7 +74,6 @@ Lexer::Lexer(string path)
             {
                 throw(Wseq_exception(*i, line, in));
             }
-            
         }
         int offset = 0;
         for (auto j = tokens_.begin() + toNumirate; j < tokens_.end(); j++)
@@ -63,86 +92,92 @@ Lexer::Lexer(string path)
     in.close();
 }
 
-void Lexer::split(const string &s, char delim, vector<string> &elems)
-{
-    stringstream ss(s);
-    string item;
-    while (getline(ss, item, delim))
-    {
-        elems.push_back(item);
-    }
-}
-
-void Lexer::getType(string &word, string &type)
-{
-    for (auto i = expressions_.begin(); i < expressions_.end(); i++)
-    {
-        if (regex_match(word.c_str(), i->expression))
-        {
-            type = i->name;
-            return;
-        }
-    }
-    type = "Wrong type";
-}
-
 void Lexer::initializeMap()
 {
     exp tmp;
 
+    tmp.name = "Comment";
+    tmp.expression = "^//[a-zA-Z0-9 ]+";
+    expressions_.push_back(tmp);
+
     tmp.name = "using";
-    tmp.expression = "[;|^]?using$";
+    tmp.expression = "^using$";
     expressions_.push_back(tmp);
 
     tmp.name = "int";
-    tmp.expression = "[;|^]?int$";
+    tmp.expression = "^int$";
     expressions_.push_back(tmp);
 
     tmp.name = "public";
-    tmp.expression = "[;|^]?public$";
+    tmp.expression = "^public";
     expressions_.push_back(tmp);
 
     tmp.name = "void";
-    tmp.expression = "[;|^]?void$";
+    tmp.expression = "^void$";
+    expressions_.push_back(tmp);
+
+    tmp.name = "if";
+    tmp.expression = "^if";
+    expressions_.push_back(tmp);
+
+    tmp.name = "while";
+    tmp.expression = "^while";
+    expressions_.push_back(tmp);
+
+    tmp.name = "else";
+    tmp.expression = "^else";
+    expressions_.push_back(tmp);
+
+
+    tmp.name = "char";
+    tmp.expression = "^char$";
+    expressions_.push_back(tmp);
+
+    tmp.name = ",";
+    tmp.expression = "^,";
     expressions_.push_back(tmp);
 
     tmp.name = "Key word class";
-    tmp.expression = ";?class$";
+    tmp.expression = "^class$";
     expressions_.push_back(tmp);
 
     tmp.name = "Left brace";
-    tmp.expression = ";?\\{$";
+    tmp.expression = "^\\{";
     expressions_.push_back(tmp);
 
     tmp.name = "Right brace";
-    tmp.expression = ";?\\}$";
+    tmp.expression = "^\\}";
     expressions_.push_back(tmp);
 
     tmp.name = "Operator .";
-    tmp.expression = "\\.";
+    tmp.expression = "^\\.";
     expressions_.push_back(tmp);
 
     tmp.name = "Left parenthesis";
-    tmp.expression = "\\(";
+    tmp.expression = "^\\(";
     expressions_.push_back(tmp);
 
     tmp.name = "Right parenthesis";
-    tmp.expression = "\\)";
+    tmp.expression = "^\\)";
     expressions_.push_back(tmp);
 
     tmp.name = "String literal";
-    tmp.expression = "\"[a-zA-Z0-9 +-=]*\"";
+    tmp.expression = "^\"[a-zA-Z0-9 +-=]*\"";
     expressions_.push_back(tmp);
 
     tmp.name = "Identifier";
-    tmp.expression = "[_|a-zA-Z][a-zA-Z0-9]*";
+    tmp.expression = "^[_|a-zA-Z][a-zA-Z0-9]*";
     expressions_.push_back(tmp);
 
     tmp.name = "Operator";
-    tmp.expression = "[=|*|-|+|/]";
+    tmp.expression = "^[==|=|*|-|+|/|<|>]";
     expressions_.push_back(tmp);
 
     tmp.name = "Semi";
-    tmp.expression = ";";
+    tmp.expression = "^;";
+    expressions_.push_back(tmp);
+
+    tmp.name = "Constant";
+    tmp.expression = "^[0-9]+";
     expressions_.push_back(tmp);
 }

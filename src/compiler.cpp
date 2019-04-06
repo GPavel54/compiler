@@ -7,9 +7,10 @@ int main(int argc, char **argv)
         cout << "Using " << argv[0] << " infile.cs outfile" << endl;
         return 1;
     }
+    Lexer lex;
     try 
     {
-        Lexer lex(argv[1]);
+        lex.makeTable(argv[1]);
     }
     catch (Open_exception& ex)
     {
