@@ -83,13 +83,17 @@ void Lexer::makeTable(string path)
         toNumirate += tokens_.size() - toNumirate;
         line++;
     }
+    in.close();
+}
+
+void Lexer::printTable()
+{
     int h = 0;
     for (auto i:tokens_)
     {
         h++;
         cout << setw(2) << h << " : token (" << setw(17) << i.name << ") = " << setw(12) << i.token << " col = " << setw(2) << i.col << " row = " << i.row << endl;
     }
-    in.close();
 }
 
 void Lexer::initializeMap()
@@ -100,16 +104,12 @@ void Lexer::initializeMap()
     tmp.expression = "^//[a-zA-Z0-9 ]+";
     expressions_.push_back(tmp);
 
-    tmp.name = "using";
-    tmp.expression = "^using$";
-    expressions_.push_back(tmp);
-
     tmp.name = "int";
     tmp.expression = "^int$";
     expressions_.push_back(tmp);
 
     tmp.name = "public";
-    tmp.expression = "^public";
+    tmp.expression = "^public$";
     expressions_.push_back(tmp);
 
     tmp.name = "void";
@@ -127,7 +127,6 @@ void Lexer::initializeMap()
     tmp.name = "else";
     tmp.expression = "^else";
     expressions_.push_back(tmp);
-
 
     tmp.name = "char";
     tmp.expression = "^char$";
@@ -170,7 +169,7 @@ void Lexer::initializeMap()
     expressions_.push_back(tmp);
 
     tmp.name = "Operator";
-    tmp.expression = "^[==|=|*|-|+|/|<|>]";
+    tmp.expression = "^[==|=|*|\\-|+|/|<|>]";
     expressions_.push_back(tmp);
 
     tmp.name = "Semi";

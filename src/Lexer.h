@@ -4,15 +4,15 @@
 
 class Lexer
 {
+    vector<Token> tokens_;
+    vector<exp> expressions_;
 public:
     Lexer();
     void initializeMap();
     void getType(string& word, string& type);
     void split(const string &s, char delim, vector<string> &elems);
     void makeTable(string path);
-
-    vector<Token> tokens_;
-    vector<exp> expressions_;
+    void printTable();
 };
 
 #endif

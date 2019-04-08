@@ -20,4 +20,6 @@ int main(int argc, char **argv)
     {
         return ex.what();
     }
+    cout << "Table of tokens:" << endl << endl;
+    lex.printTable();
 }
