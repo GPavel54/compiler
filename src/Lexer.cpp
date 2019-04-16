@@ -101,19 +101,15 @@ void Lexer::initializeMap()
     exp tmp;
 
     tmp.name = "Comment";
-    tmp.expression = "^//[a-zA-Z0-9 ]+";
-    expressions_.push_back(tmp);
-
-    tmp.name = "int";
-    tmp.expression = "^int$";
+    tmp.expression = "^//[a-zA-Z0-9 ]*";
     expressions_.push_back(tmp);
 
     tmp.name = "public";
     tmp.expression = "^public$";
     expressions_.push_back(tmp);
 
-    tmp.name = "void";
-    tmp.expression = "^void$";
+    tmp.name = "Type";
+    tmp.expression = "^(void)$|^(char)$|^(int)$";
     expressions_.push_back(tmp);
 
     tmp.name = "if";
@@ -126,10 +122,6 @@ void Lexer::initializeMap()
 
     tmp.name = "else";
     tmp.expression = "^else";
-    expressions_.push_back(tmp);
-
-    tmp.name = "char";
-    tmp.expression = "^char$";
     expressions_.push_back(tmp);
 
     tmp.name = ",";
@@ -168,8 +160,20 @@ void Lexer::initializeMap()
     tmp.expression = "^[_|a-zA-Z][a-zA-Z0-9]*";
     expressions_.push_back(tmp);
 
+    tmp.name = "Logical operator";
+    tmp.expression = "^(==)|^(>=)|^(<=)";
+    expressions_.push_back(tmp);
+
     tmp.name = "Operator";
-    tmp.expression = "^[==|=|*|\\-|+|/|<|>]";
+    tmp.expression = "^[=|*|\\-|+|/]";
+    expressions_.push_back(tmp);
+
+    tmp.name = "Left index";
+    tmp.expression = "\\[";
+    expressions_.push_back(tmp);
+
+    tmp.name = "Right index";
+    tmp.expression = "\\]";
     expressions_.push_back(tmp);
 
     tmp.name = "Semi";
