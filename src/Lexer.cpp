@@ -123,6 +123,10 @@ void Lexer::initializeMap()
     tmp.expression = "^if";
     expressions_.push_back(tmp);
 
+    tmp.name = "main";
+    tmp.expression = "^main";
+    expressions_.push_back(tmp);
+
     tmp.name = "while";
     tmp.expression = "^while";
     expressions_.push_back(tmp);
@@ -139,7 +143,7 @@ void Lexer::initializeMap()
     tmp.expression = "^,";
     expressions_.push_back(tmp);
 
-    tmp.name = "Key word class";
+    tmp.name = "Class";
     tmp.expression = "^class$";
     expressions_.push_back(tmp);
 
@@ -175,15 +179,15 @@ void Lexer::initializeMap()
     tmp.expression = "^(==)|^(>=)|^(<=)";
     expressions_.push_back(tmp);
 
-    tmp.name = "Operator = ";
+    tmp.name = "Operator =";
     tmp.expression = "^=";
     expressions_.push_back(tmp);
     
-    tmp.name = "Operator 1 ";
+    tmp.name = "Operator 1";
     tmp.expression = "^\\*|^/";
     expressions_.push_back(tmp);
 
-    tmp.name = "Operator 2 ";
+    tmp.name = "Operator 2";
     tmp.expression = "^\\-|^\\+";
     expressions_.push_back(tmp);
 

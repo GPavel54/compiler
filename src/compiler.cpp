@@ -1,4 +1,5 @@
 #include "Lexer.h"
+#include "Parser.h"
 
 int main(int argc, char **argv)
 {
@@ -22,4 +23,11 @@ int main(int argc, char **argv)
     }
     cout << "Table of tokens:" << endl << endl;
     lex.printTable();
+
+    cout << "Making syntax tree..." << endl;
+
+    Parser par;
+
+    par.makeSyntaxTree(lex);
+
 }

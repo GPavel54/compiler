@@ -28,6 +28,13 @@ struct exp
     regex expression;
 };
 
+struct ParsElem
+{
+    bool terminal;
+    Token tok;
+    string prod;
+};
+
 void eraseFreeSpace(string& str);
 void numirateToken(string& token, string& buffer, int offset, int& position);
 

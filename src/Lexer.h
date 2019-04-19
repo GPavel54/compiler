@@ -6,6 +6,7 @@ class Lexer
 {
     list<Token> tokens_;
     vector<exp> expressions_;
+    friend class Parser;
 public:
     Lexer();
     void initializeMap();
