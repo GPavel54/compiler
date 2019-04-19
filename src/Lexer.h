@@ -4,7 +4,7 @@
 
 class Lexer
 {
-    vector<Token> tokens_;
+    list<Token> tokens_;
     vector<exp> expressions_;
 public:
     Lexer();

@@ -76,9 +76,16 @@ void Lexer::makeTable(string path)
             }
         }
         int offset = 0;
-        for (auto j = tokens_.begin() + toNumirate; j < tokens_.end(); j++)
+        auto offsetIter = tokens_.begin();
+        int inc = 0;
+        while (inc < toNumirate)
         {
-            numirateToken(j->token, buffer, offset, j->col);
+            inc++;
+            offsetIter++;
+        }
+        for (; offsetIter != tokens_.end(); offsetIter++)
+        {
+            numirateToken(offsetIter->token, buffer, offset, offsetIter->col);
         }
         toNumirate += tokens_.size() - toNumirate;
         line++;
@@ -92,7 +99,7 @@ void Lexer::printTable()
     for (auto i:tokens_)
     {
         h++;
-        cout << setw(2) << h << " : token (" << setw(17) << i.name << ") = " << setw(12) << i.token << " col = " << setw(2) << i.col << " row = " << i.row << endl;
+        cout << setw(3) << h << " : token (" << setw(17) << i.name << ") = " << setw(12) << i.token << " col = " << setw(2) << i.col << " row = " << i.row << endl;
     }
 }
 
@@ -122,6 +129,10 @@ void Lexer::initializeMap()
 
     tmp.name = "else";
     tmp.expression = "^else";
+    expressions_.push_back(tmp);
+
+    tmp.name = "return";
+    tmp.expression = "^return$";
     expressions_.push_back(tmp);
 
     tmp.name = ",";
@@ -164,8 +175,16 @@ void Lexer::initializeMap()
     tmp.expression = "^(==)|^(>=)|^(<=)";
     expressions_.push_back(tmp);
 
-    tmp.name = "Operator";
-    tmp.expression = "^[=|*|\\-|+|/]";
+    tmp.name = "Operator = ";
+    tmp.expression = "^=";
+    expressions_.push_back(tmp);
+    
+    tmp.name = "Operator 1 ";
+    tmp.expression = "^\\*|^/";
+    expressions_.push_back(tmp);
+
+    tmp.name = "Operator 2 ";
+    tmp.expression = "^\\-|^\\+";
     expressions_.push_back(tmp);
 
     tmp.name = "Left index";
