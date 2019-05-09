@@ -24,6 +24,7 @@ void Parser::makeSyntaxTree(Lexer& lex)
             {
                 break;
             }
+            else
             {
                 tree << " → " << ret;
             }
@@ -35,7 +36,8 @@ void Parser::makeSyntaxTree(Lexer& lex)
     }
     if (ret == 0)
     {
-        cout << "Error int your language in col = " << lex.tokens_.front().col << " row = " << lex.tokens_.front().col << endl;
+        cout << "Error in your language in col = " << lex.tokens_.front().col << " row = " 
+            << lex.tokens_.front().row << " name = " << lex.tokens_.front().token << endl;
     }
     else
     {
@@ -100,11 +102,13 @@ int Parser::addToStack(string terminalName, string token, string noterminal)
             stack.push_back(tmp);
             tmp.tok.name = "Type";
             stack.push_back(tmp);
+            tmp.tok.name = "static";
+            stack.push_back(tmp);
             tmp.tok.name = "Left brace";
             stack.push_back(tmp);
             tmp.tok.name = "Identifier";
             stack.push_back(tmp);
-            tmp.tok.name = "class";
+            tmp.tok.name = "Class";
             stack.push_back(tmp);
             break;
         case 2:
@@ -449,6 +453,13 @@ int Parser::addToStack(string terminalName, string token, string noterminal)
         case 45:
         case 46:
             break;
+        case 47:
+            tmp.terminal = true;
+            tmp.tok.name = "Semi";
+            stack.push_back(tmp);
+            tmp.tok.name = "break";
+            stack.push_back(tmp);
+
     }
     return ret;
 }
@@ -487,6 +498,10 @@ int Parser::getRule(string terminalName, string token, string noterminal)
         else if (terminalName == "return")
         {
             return 5;
+        }
+        else if (terminalName == "break")
+        {
+            return 47;
         }
         else
         {

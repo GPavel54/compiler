@@ -115,6 +115,10 @@ void Lexer::initializeMap()
     tmp.expression = "^public$";
     expressions_.push_back(tmp);
 
+    tmp.name = "static";
+    tmp.expression = "^static$";
+    expressions_.push_back(tmp);
+
     tmp.name = "Type";
     tmp.expression = "^(void)$|^(char)$|^(int)$";
     expressions_.push_back(tmp);
@@ -124,7 +128,7 @@ void Lexer::initializeMap()
     expressions_.push_back(tmp);
 
     tmp.name = "main";
-    tmp.expression = "^main";
+    tmp.expression = "^Main";
     expressions_.push_back(tmp);
 
     tmp.name = "while";
@@ -137,6 +141,10 @@ void Lexer::initializeMap()
 
     tmp.name = "return";
     tmp.expression = "^return$";
+    expressions_.push_back(tmp);
+
+    tmp.name = "break";
+    tmp.expression = "^break";
     expressions_.push_back(tmp);
 
     tmp.name = ",";
@@ -176,7 +184,7 @@ void Lexer::initializeMap()
     expressions_.push_back(tmp);
 
     tmp.name = "Logical operator";
-    tmp.expression = "^(==)|^(>=)|^(<=)";
+    tmp.expression = "^(==)|^(>=)|^(<=)|^<|^>|^(!=)";
     expressions_.push_back(tmp);
 
     tmp.name = "Operator =";
