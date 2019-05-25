@@ -9,9 +9,9 @@ class Parser
 {
     vector<ParsElem> stack;
     stringstream tree;
-    int uncover(Token& token);
-    int addToStack(string terminalName, string token, string noterminal);
-    int getRule(string terminalName, string token, string noterminal);
+    int uncover(Token& token, int rule);
+    int addToStack(string terminalName, string token, string noterminal, int rule);
+    int getRule(string terminalName, string token, string noterminal, int rule);
 public:
     void makeSyntaxTree(Lexer & lex);
     Parser();

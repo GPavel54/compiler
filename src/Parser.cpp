@@ -15,7 +15,12 @@ void Parser::makeSyntaxTree(Lexer& lex)
     { 
         if (!lex.tokens_.empty())
         {
-            ret = uncover(lex.tokens_.front());
+            int firstRule = 1;
+            if (lex.tokens_.front().name == "Left parenthesis")
+            {
+                firstRule = 0;
+            }
+            ret = uncover(lex.tokens_.front(), firstRule);
             if (ret == REMOVESYM)
             {
                 lex.tokens_.pop_front();
@@ -45,12 +50,12 @@ void Parser::makeSyntaxTree(Lexer& lex)
     }
 }
 
-int Parser::uncover(Token& token)
+int Parser::uncover(Token& token, int rule)
 {
     int ret = 0;
     if (!stack.back().terminal)
     {
-        ret = addToStack(token.name, token.token, stack.back().prod);
+        ret = addToStack(token.name, token.token, stack.back().prod, rule);
         if (ret == 0)
         {
             return ret;
@@ -67,9 +72,9 @@ int Parser::uncover(Token& token)
     return ret;
 }
 
-int Parser::addToStack(string terminalName, string token, string noterminal)
+int Parser::addToStack(string terminalName, string token, string noterminal, int rule)
 {
-    int ret = getRule(terminalName, token, noterminal);
+    int ret = getRule(terminalName, token, noterminal, rule);
     ParsElem tmp;
     if (ret == 0)
     {
@@ -464,7 +469,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal)
     return ret;
 }
 
-int Parser::getRule(string terminalName, string token, string noterminal)
+int Parser::getRule(string terminalName, string token, string noterminal, int rule)
 {
     if (noterminal == "S")
     {
@@ -510,9 +515,13 @@ int Parser::getRule(string terminalName, string token, string noterminal)
     }
     if (noterminal == "Count")
     {
-        if (terminalName == "Identifier")
+        if (terminalName == "Identifier" && rule == 1)
         {
             return 8;
+        }
+        else if (terminalName == "Identifier" && rule == 1)
+        {
+            return 48;
         }
         else if (terminalName == "Type")
         {

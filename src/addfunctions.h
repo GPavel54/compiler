@@ -18,8 +18,8 @@ struct Token
 {
     int row;
     int col;
-    string name;
-    string token;
+    string name;  //token type (e. g. left parathesis)
+    string token; //token in program (e. g. myFunc)
 };
 
 struct exp

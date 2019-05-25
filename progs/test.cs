@@ -1,10 +1,8 @@
-using System;
-
 class Program
 {
     static void Main()
     {
-			Console.WriteLine(DateTime.Now);
+		a = a+b-n;
     }
 }
 
