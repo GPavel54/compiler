@@ -45,6 +45,7 @@ void Lexer::makeTable(string path)
     {
         vector<string> tmp; // хранит в себе разбитую по пробелам строку
         split(buffer, ' ', tmp);
+        checkStringLiterals(tmp);
 
         for (auto i = tmp.begin(); i < tmp.end(); i++)
         {
@@ -105,10 +106,14 @@ void Lexer::printTable()
 
 void Lexer::initializeMap()
 {
-    exp tmp;
+    expre tmp;
 
     tmp.name = "Comment";
     tmp.expression = "^//[a-zA-Z0-9 ]*";
+    expressions_.push_back(tmp);
+
+    tmp.name = "Symbol";
+    tmp.expression = "'[\\S]'";
     expressions_.push_back(tmp);
 
     tmp.name = "public";
@@ -176,7 +181,7 @@ void Lexer::initializeMap()
     expressions_.push_back(tmp);
 
     tmp.name = "String literal";
-    tmp.expression = "^\"[a-zA-Z0-9 +-=]*\"";
+    tmp.expression = "^\"[a-zA-Z0-9\\s+-=]*\"";
     expressions_.push_back(tmp);
 
     tmp.name = "Identifier";
@@ -202,6 +207,10 @@ void Lexer::initializeMap()
     tmp.name = "Left index";
     tmp.expression = "\\[";
     expressions_.push_back(tmp);
+    
+    tmp.name = "Constant";
+    tmp.expression = "^[0-9]+";
+    expressions_.push_back(tmp);
 
     tmp.name = "Right index";
     tmp.expression = "\\]";
@@ -211,7 +220,4 @@ void Lexer::initializeMap()
     tmp.expression = "^;";
     expressions_.push_back(tmp);
 
-    tmp.name = "Constant";
-    tmp.expression = "^[0-9]+";
-    expressions_.push_back(tmp);
 }

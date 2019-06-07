@@ -5,7 +5,7 @@
 class Lexer
 {
     list<Token> tokens_;
-    vector<exp> expressions_;
+    vector<expre> expressions_;
     friend class Parser;
 public:
     Lexer();

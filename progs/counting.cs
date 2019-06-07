@@ -9,7 +9,7 @@ class Program
             r = r - 1;
             u = u + 10;
         }
-        //Write(u);
+        Write(u);
         //r = myfunc(u);
     }
 

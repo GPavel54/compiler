@@ -6,6 +6,7 @@ Parser::Parser()
     tmp.terminal = false;
     tmp.prod = "S";
     stack.push_back(tmp);
+    products.push_back(&syntaxTree);
 }
 
 void Parser::makeSyntaxTree(Lexer& lex)
@@ -16,13 +17,44 @@ void Parser::makeSyntaxTree(Lexer& lex)
         if (!lex.tokens_.empty())
         {
             int firstRule = 1;
-            if (lex.tokens_.front().name == "Left parenthesis")
-            {
-                firstRule = 0;
+            if (lex.tokens_.front().name == "Identifier"){
+                auto elem = lex.tokens_.begin();
+                advance(elem, 1);
+                if (elem->name == "Left parenthesis")
+                {
+                    firstRule = 0;
+                }
             }
             ret = uncover(lex.tokens_.front(), firstRule);
-            if (ret == REMOVESYM)
+            if (ret != 0 && ret != REMOVESYM)
             {
+                addToTree(ret);
+            }
+            else if (ret == REMOVESYM)
+            {
+                bool needBreak = false;
+                treeNode * tmpNode = products.front();
+                while (needBreak == false)
+                {
+                    for (int i = 0; i < tmpNode->size; i++)
+                    {
+                        if (tmpNode->nodes[i].name != "empty")
+                        {
+                            continue;
+                        } 
+                        else 
+                        {
+                            tmpNode->nodes[i].name = "term";
+                            tmpNode->nodes[i].token = lex.tokens_.front().token;
+                            needBreak = true;
+                            break;
+                        }
+                    }
+                    if (needBreak == false)
+                    {
+                        products.erase(products.begin());
+                    }
+                }
                 lex.tokens_.pop_front();
             }
             else if (ret == 0)
@@ -41,12 +73,13 @@ void Parser::makeSyntaxTree(Lexer& lex)
     }
     if (ret == 0)
     {
-        cout << "Error in your language in col = " << lex.tokens_.front().col << " row = " 
-            << lex.tokens_.front().row << " name = " << lex.tokens_.front().token << endl;
+        cout << "Error in your language in row = " << lex.tokens_.front().row << " col = " 
+            << lex.tokens_.front().col << " name = " << lex.tokens_.front().token << endl;
     }
     else
     {
-        cout << "Tree : " << endl << tree.str() << endl;
+        cout << "Chain : " << endl << tree.str() << endl;
+        syntaxTree.printTree(syntaxTree);
     }
 }
 
@@ -70,6 +103,495 @@ int Parser::uncover(Token& token, int rule)
         }
     }
     return ret;
+}
+
+void Parser::addToTree(int rule)
+{
+    treeNode * prod = products.back(); 
+    switch(rule){
+        case 1:
+            prod->terminal = false;
+            prod->name = "S";
+            prod->size = 13;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[11]);
+            products.push_back(&((treeNode *)prod)->nodes[9]);
+            break;
+        case 2:
+        case 3:
+        case 4:
+            prod->terminal = false;
+            prod->name = "Program";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 5:
+            prod->terminal = false;
+            prod->name = "Program";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+        case 6:
+            prod->terminal = false;
+            prod->name = "Program"; // эпсилон
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 7:
+            prod->terminal = false;
+            prod->name = "Counting";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 8:
+            prod->terminal = false;
+            prod->name = "Counting";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            //products.push_back();
+            break;
+        case 9:
+            prod->terminal = false;
+            prod->name = "Expr";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 10:
+            prod->terminal = false;
+            prod->name = "Formula";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);          
+            products.push_back(&((treeNode *)prod)->nodes[1]);            
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 11:
+            prod->terminal = false;
+            prod->name = "B";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[2]);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 12:
+            prod->terminal = false;
+            prod->name = "B"; // эпсилон
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 13:
+            prod->terminal = false;
+            prod->name = "A";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);            
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 14:
+            prod->terminal = false;
+            prod->name = "D";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[2]);            
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 15:
+            prod->terminal = false;
+            prod->name = "D"; // эпсилон
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 16:
+            prod->terminal = false;
+            prod->name = "C";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 17:
+            prod->terminal = false;
+            prod->name = "C";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 18:
+            prod->terminal = false;
+            prod->name = "Number";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 19:
+            prod->terminal = false;
+            prod->name = "Number";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+        case 20:
+            prod->terminal = false;
+            prod->name = "Number";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+        case 21:
+            prod->terminal = false;
+            prod->name = "Condition";
+            prod->size = 8;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[5]);
+            products.push_back(&((treeNode *)prod)->nodes[2]);
+            break;
+        case 22:
+            prod->terminal = false;
+            prod->name = "E";
+            prod->size = 4;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[2]);
+            break;
+        case 23:
+            prod->terminal = false;
+            prod->name = "E"; // эпсилон
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 24:
+            prod->terminal = false;
+            prod->name = "Logical";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 25:
+            prod->terminal = false;
+            prod->name = "Logical";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[2]);
+            break;
+        case 26:
+            prod->terminal = false;
+            prod->name = "F";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 27:
+            prod->terminal = false;
+            prod->name = "F";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 28:
+            prod->terminal = false;
+            prod->name = "Loop";
+            prod->size = 7;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[2]);
+            products.push_back(&((treeNode *)prod)->nodes[5]);
+            break;
+        case 29:
+            prod->terminal = false;
+            prod->name = "Function";
+            prod->size = 9;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[8]);
+            products.push_back(&((treeNode *)prod)->nodes[6]);
+            products.push_back(&((treeNode *)prod)->nodes[3]);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 30:
+            prod->terminal = false;
+            prod->name = "L";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 31:
+            prod->terminal = false;
+            prod->name = "L";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 32:
+            prod->terminal = false;
+            prod->name = "Param";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 33:
+            prod->terminal = false;
+            prod->name = "G";
+            prod->size = 4;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[2]);
+            break;
+        case 34:
+            prod->terminal = false;
+            prod->name = "G";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 35:
+            prod->terminal = false;
+            prod->name = "Init";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 36:
+            prod->terminal = false;
+            prod->name = "H";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 37:
+            prod->terminal = false;
+            prod->name = "N";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+        case 38:
+            prod->terminal = false;
+            prod->name = "N";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 39:
+            prod->terminal = false;
+            prod->name = "Ident";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 40:
+            prod->terminal = false;
+            prod->name = "J";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 41:
+            prod->terminal = false;
+            prod->name = "J";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 42:
+            prod->terminal = false;
+            prod->name = "K";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+        case 43:
+            prod->terminal = false;
+            prod->name = "K";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 44:
+            prod->terminal = false;
+            prod->name = "M";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 45:
+            prod->terminal = false;
+            prod->name = "M";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 46:
+            prod->terminal = false;
+            prod->name = "Function";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 47:
+            prod->terminal = false;
+            prod->name = "Prog";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+        case 48:
+            prod->terminal = false;
+            prod->name = "Count";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 49:
+            prod->terminal = false;
+            prod->name = "O";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 50:
+            prod->terminal = false;
+            prod->name = "P";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 51:
+            prod->terminal = false;
+            prod->name = "P";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            prod->nodes[0].terminal = true;
+            prod->nodes[0].token = "ε";
+            break;
+        case 52:
+            prod->terminal = false;
+            prod->name = "CountFunction";
+            prod->size = 4;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[2]);
+            break;
+        case 53:
+            prod->terminal = false;
+            prod->name = "Number";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 54:
+            prod->terminal = false;
+            prod->name = "Prog";
+            prod->size = 2;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            products.push_back(&((treeNode *)prod)->nodes[0]);
+            break;
+        case 55:
+            prod->terminal = false;
+            prod->name = "Block";
+            prod->size = 3;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            products.push_back(&((treeNode *)prod)->nodes[1]);
+            break;
+        case 56:
+            prod->terminal = false;
+            prod->name = "Number";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+        case 57:
+            prod->terminal = false;
+            prod->name = "Number";
+            prod->size = 1;
+            prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
+            break;
+    }
+    prod->setEmpty();
+}
+
+void Parser::treeNode::setEmpty()
+{
+    for (int i = 0; i < size; i++)
+    {
+        if (nodes[i].name != "ε"){
+            nodes[i].name = "empty";
+        }
+    }
+}
+
+void Parser::treeNode::printTree(treeNode& tn)
+{
+    vector<toPrintSt> toPrint;
+    bool stop = false;
+    treeNode * tmp = &tn;
+    toPrintSt tempSt;
+    tempSt.tn = tmp;
+    tempSt.layer = 0;
+    toPrint.push_back(tempSt);
+    int index = 1, maxLayer = 0;
+    while (!stop)
+    {
+        tmp = toPrint[index].tn;
+        for (int i = 0; i < tmp->size; i++)
+        {
+            if (tmp->nodes[i].terminal == false)
+            {
+                tempSt.tn = tmp->nodes + i;
+                tempSt.layer = index;
+                toPrint.push_back(tempSt);
+                if (index > maxLayer)
+                {
+                    maxLayer = index;
+                }
+            }
+        }
+        index++;
+    }
+    index = 0;
+    stringstream ss;
+    int currentLayer = 0;
+    while (!toPrint.empty())
+    {
+        bool needPrintTab = true;
+        for (auto i = toPrint.begin(); i < toPrint.end(); i++)
+        {
+            if (i->layer == currentLayer)
+            {
+                if (needPrintTab)
+                {
+                    for (int u = 0; u < maxLayer - currentLayer; u++)
+                    {
+                        ss << "\t";
+                    }
+                }
+                for (int u = 0; u < i->tn->size; u++)
+                {
+                    if (i->tn->nodes[u].terminal)
+                    {
+                        ss << i->tn->nodes[u].token;
+                    }
+                    else
+                    {
+                        ss << i->tn->nodes[u].name;
+                    }
+                }
+                toPrint.erase(i);
+            }
+        }
+        currentLayer++;
+        ss << "\n";
+    }
+    cout << "Syntax tree" << endl;
+    cout << ss.str() << endl;
 }
 
 int Parser::addToStack(string terminalName, string token, string noterminal, int rule)
@@ -149,7 +671,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 6:
-            break;
+            return EPSILON;
         case 7:
             tmp.terminal = false;
             tmp.prod = "Init";
@@ -191,7 +713,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 12:
-            break;
+            return EPSILON;
         case 13:
             tmp.terminal = false;
             tmp.prod = "D";
@@ -210,7 +732,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 15:
-            break;
+            return EPSILON;
         case 16:
             tmp.terminal = true;
             tmp.tok.name = "Right parenthesis";
@@ -282,7 +804,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 23:
-            break;
+            return EPSILON;
         case 24:
             tmp.terminal = false;
             tmp.prod = "F";
@@ -340,26 +862,24 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             tmp.prod = "L";
             stack.push_back(tmp);
             tmp.terminal = true;
-            tmp.tok.name = "Right parenthesis";
+            tmp.tok.name = "Right brace";
             stack.push_back(tmp);
             tmp.terminal = false;
             tmp.prod = "Prog";
             stack.push_back(tmp);
             tmp.terminal = true;
-            tmp.tok.name = "Left parenthesis";
+            tmp.tok.name = "Left brace";
             stack.push_back(tmp);
-            tmp.tok.name = "Right brace";
+            tmp.tok.name = "Right parenthesis";
             stack.push_back(tmp);
             tmp.terminal = false;
             tmp.prod = "Param";
             stack.push_back(tmp);
             tmp.terminal = true;
-            tmp.tok.name = "Right brace";
+            tmp.tok.name = "Left parenthesis";
             stack.push_back(tmp);
-            tmp.terminal = false;
-            tmp.prod = "Ident";
+            tmp.tok.name = "Identifier";
             stack.push_back(tmp);
-            tmp.terminal = true;
             tmp.tok.name = "Type";
             stack.push_back(tmp);
             break;
@@ -369,7 +889,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 31:
-            break;
+            return EPSILON;
         case 32:
             tmp.terminal = false;
             tmp.prod = "G";
@@ -393,7 +913,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 34:
-            break;
+            return EPSILON;
         case 35:
             tmp.terminal = false;
             tmp.prod = "H";
@@ -439,7 +959,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 41:
-            break;
+            return EPSILON;
         case 42:
             tmp.terminal = true;
             tmp.tok.name = "Constant";
@@ -457,14 +977,87 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             break;
         case 45:
         case 46:
-            break;
+            return EPSILON;
         case 47:
             tmp.terminal = true;
             tmp.tok.name = "Semi";
             stack.push_back(tmp);
             tmp.tok.name = "break";
             stack.push_back(tmp);
-
+            break;
+        case 48:
+            tmp.terminal = true;
+            tmp.tok.name = "Semi";
+            stack.push_back(tmp);
+            tmp.terminal = false;
+            tmp.prod = "CountFunction";
+            stack.push_back(tmp);
+            break;
+        case 49:
+            tmp.terminal = false;
+            tmp.prod = "P";
+            stack.push_back(tmp);
+            tmp.prod = "Number";
+            stack.push_back(tmp);
+            break;
+        case 50:
+            tmp.terminal = false;
+            tmp.prod = "P";
+            stack.push_back(tmp);
+            tmp.prod = "Number";
+            stack.push_back(tmp);
+            tmp.terminal = true;
+            tmp.tok.name = ",";
+            stack.push_back(tmp);
+            break;
+        case 51:
+            return EPSILON;
+        case 52:
+            tmp.terminal = true;
+            tmp.tok.name = "Right parenthesis";
+            stack.push_back(tmp);
+            tmp.terminal = false;
+            tmp.prod = "O";
+            stack.push_back(tmp);
+            tmp.terminal = true;
+            tmp.tok.name = "Left parenthesis";
+            stack.push_back(tmp);
+            tmp.tok.name = "Identifier";
+            stack.push_back(tmp);
+            break;
+        case 53:
+            tmp.terminal = false;
+            tmp.prod = "CountFunction";
+            stack.push_back(tmp);
+            break;
+        case 54:
+            tmp.terminal = false;
+            tmp.prod = "Prog";
+            stack.push_back(tmp);
+            tmp.prod = "Block";
+            stack.push_back(tmp);
+            break;
+        case 55:
+            tmp.terminal = true;
+            tmp.tok.name = "Right brace";
+            stack.push_back(tmp);
+            tmp.terminal = false;
+            tmp.prod = "Prog";
+            stack.push_back(tmp);
+            tmp.terminal = true;
+            tmp.tok.name = "Left brace";
+            stack.push_back(tmp);
+            break;
+        case 56:
+            tmp.terminal = true;
+            tmp.tok.name = "String literal";
+            stack.push_back(tmp);
+            break;
+        case 57:
+            tmp.terminal = true;
+            tmp.tok.name = "Symbol";
+            stack.push_back(tmp);
+            break;
     }
     return ret;
 }
@@ -508,6 +1101,10 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         {
             return 47;
         }
+        else if (terminalName == "Left brace")
+        {
+            return 54;
+        }
         else
         {
             return 6;
@@ -519,7 +1116,7 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         {
             return 8;
         }
-        else if (terminalName == "Identifier" && rule == 1)
+        else if (terminalName == "Identifier" && rule == 0)
         {
             return 48;
         }
@@ -561,6 +1158,14 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         {
             return 10;
         }
+        else if (terminalName == "String literal")
+        {
+            return 10;
+        }
+        else if (terminalName == "Symbol")
+        {
+            return 10;
+        }
         else
         {
             return 0;
@@ -581,6 +1186,14 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
             return 13;
         }
         else if (terminalName == "Operator 2" && token == "-")
+        {
+            return 13;
+        }
+        else if (terminalName == "String literal")
+        {
+            return 13;
+        }
+        else if (terminalName == "Symbol")
         {
             return 13;
         }
@@ -629,6 +1242,14 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         {
             return 17;
         }
+        else if (terminalName == "String literal")
+        {
+            return 17;
+        }
+        else if (terminalName == "Symbol")
+        {
+            return 17;
+        }
         else
         {
             return 0;
@@ -636,9 +1257,13 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
     }
     if (noterminal == "Number")
     {
-        if (terminalName == "Identifier")
+        if (terminalName == "Identifier" && rule == 1)
         {
             return 18;
+        }
+        else if (terminalName == "Identifier" && rule == 0)
+        {
+            return 53;
         }
         else if (terminalName == "Constant")
         {
@@ -647,6 +1272,14 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         else if (terminalName == "Operator 2" && token == "-")
         {
             return 20;
+        }
+        else if (terminalName == "String literal")
+        {
+            return 56;
+        }
+        else if (terminalName == "Symbol")
+        {
+            return 57;
         }
         else
         {
@@ -833,6 +1466,14 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         {
             return 44;
         }
+        else if (terminalName == "String literal")
+        {
+            return 44;
+        }
+        else if (terminalName == "Symbol")
+        {
+            return 44;
+        }
         else
         {
             return 45;
@@ -847,6 +1488,66 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         else if (terminalName == "Semi")
         {
             return 37;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (noterminal == "O")
+    {
+        if (terminalName == "Identifier")
+        {
+            return 49;
+        }
+        else if (terminalName == "Constatnt")
+        {
+            return 49;
+        }
+        else if (terminalName == "Operator 2" && token == "-")
+        {
+            return 49;
+        }
+        else if (terminalName == "String literal")
+        {
+            return 49;
+        }
+        else if (terminalName == "Symbol")
+        {
+            return 49;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (noterminal == "P")
+    {
+        if (terminalName == ",")
+        {
+            return 50;
+        }
+        else
+        {
+            return 51;
+        }
+    }
+    if (noterminal == "CountFunction")
+    {
+        if (terminalName == "Identifier")
+        {
+            return 52;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (noterminal == "Block")
+    {
+        if (terminalName == "Left brace")
+        {
+            return 55;
         }
         else
         {

@@ -14,18 +14,18 @@
 
 using namespace std;
 
+struct expre
+{
+    string name;
+    regex expression;
+};
+
 struct Token
 {
     int row;
     int col;
     string name;  //token type (e. g. left parathesis)
     string token; //token in program (e. g. myFunc)
-};
-
-struct exp
-{
-    string name;
-    regex expression;
 };
 
 struct ParsElem
@@ -37,5 +37,6 @@ struct ParsElem
 
 void eraseFreeSpace(string& str);
 void numirateToken(string& token, string& buffer, int offset, int& position);
+void checkStringLiterals(vector<string>& buffer);
 
 #endif
