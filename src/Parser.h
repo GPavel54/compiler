@@ -5,7 +5,7 @@
 
 #define REMOVESYM 888
 #define EPSILON 777
-#define SEPSILON "1epsilon"
+#define SEPSILON "epsilon"
 
 class Parser
 {
@@ -28,6 +28,7 @@ class Parser
     stringstream tree;
     treeNode syntaxTree;
     vector<treeNode *> products;
+    vector<string> commands;
 
     int uncover(Token& token, int rule);
     int addToStack(string terminalName, string token, string noterminal, int rule);

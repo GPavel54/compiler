@@ -7,6 +7,19 @@ Parser::Parser()
     tmp.prod = "S";
     stack.push_back(tmp);
     products.push_back(&syntaxTree);
+    ifstream in;
+    in.open("table.txt", ifstream::in);
+    if (!in.is_open())
+    {
+        throw (Open_exception());
+    }
+    string buffer;
+    commands.push_back("");
+    while (getline(in, buffer))
+    {
+        commands.push_back(buffer);
+    }
+    in.close();
 }
 
 void Parser::makeSyntaxTree(Lexer& lex)
@@ -28,42 +41,39 @@ void Parser::makeSyntaxTree(Lexer& lex)
             ret = uncover(lex.tokens_.front(), firstRule);
             if (ret != 0 && ret != REMOVESYM)
             {
-                addToTree(ret);
+                // addToTree(ret);
+                tree << commands[ret] << endl;
             }
             else if (ret == REMOVESYM)
             {
-                bool needBreak = false;
-                treeNode * tmpNode = products.front();
-                while (needBreak == false)
-                {
-                    for (int i = 0; i < tmpNode->size; i++)
-                    {
-                        if (tmpNode->nodes[i].name != "empty")
-                        {
-                            continue;
-                        } 
-                        else 
-                        {
-                            tmpNode->nodes[i].name = "term";
-                            tmpNode->nodes[i].token = lex.tokens_.front().token;
-                            needBreak = true;
-                            break;
-                        }
-                    }
-                    if (needBreak == false)
-                    {
-                        products.erase(products.begin());
-                    }
-                }
+            //     bool needBreak = false;
+            //     treeNode * tmpNode = products.front();
+            //     while (needBreak == false)
+            //     {
+            //         for (int i = 0; i < tmpNode->size; i++)
+            //         {
+            //             if (tmpNode->nodes[i].name != "empty")
+            //             {
+            //                 continue;
+            //             } 
+            //             else 
+            //             {
+            //                 tmpNode->nodes[i].name = "term";
+            //                 tmpNode->nodes[i].token = lex.tokens_.front().token;
+            //                 needBreak = true;
+            //                 break;
+            //             }
+            //         }
+            //         if (needBreak == false)
+            //         {
+            //             products.erase(products.begin());
+            //         }
+            //     }
                 lex.tokens_.pop_front();
             }
             else if (ret == 0)
             {
                 break;
-            }
-            else
-            {
-                tree << " → " << ret;
             }
         }   
         else
@@ -73,13 +83,16 @@ void Parser::makeSyntaxTree(Lexer& lex)
     }
     if (ret == 0)
     {
+        /*
+        *    Перевести это в функцию throw
+        *         
+        */
         cout << "Error in your language in row = " << lex.tokens_.front().row << " col = " 
             << lex.tokens_.front().col << " name = " << lex.tokens_.front().token << endl;
     }
     else
     {
-        cout << "Chain : " << endl << tree.str() << endl;
-        syntaxTree.printTree(syntaxTree);
+        // cout << "Syntax analysis : " << endl << tree.str() << endl;
     }
 }
 
@@ -515,7 +528,7 @@ void Parser::addToTree(int rule)
             prod->nodes = (treeNode *)malloc(sizeof(treeNode) * prod->size);
             break;
     }
-    prod->setEmpty();
+    // prod->setEmpty();
 }
 
 void Parser::treeNode::setEmpty()
@@ -671,7 +684,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 6:
-            return EPSILON;
+            return 6;
         case 7:
             tmp.terminal = false;
             tmp.prod = "Init";
@@ -713,7 +726,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 12:
-            return EPSILON;
+            return 12;
         case 13:
             tmp.terminal = false;
             tmp.prod = "D";
@@ -732,7 +745,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 15:
-            return EPSILON;
+            return 15;
         case 16:
             tmp.terminal = true;
             tmp.tok.name = "Right parenthesis";
@@ -804,7 +817,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 23:
-            return EPSILON;
+            return 23;
         case 24:
             tmp.terminal = false;
             tmp.prod = "F";
@@ -889,7 +902,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 31:
-            return EPSILON;
+            return 31;
         case 32:
             tmp.terminal = false;
             tmp.prod = "G";
@@ -913,7 +926,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 34:
-            return EPSILON;
+            return 34;
         case 35:
             tmp.terminal = false;
             tmp.prod = "H";
@@ -959,7 +972,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 41:
-            return EPSILON;
+            return 41;
         case 42:
             tmp.terminal = true;
             tmp.tok.name = "Constant";
@@ -976,8 +989,9 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 45:
+            return 45;
         case 46:
-            return EPSILON;
+            return 46;
         case 47:
             tmp.terminal = true;
             tmp.tok.name = "Semi";
@@ -1011,7 +1025,7 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             stack.push_back(tmp);
             break;
         case 51:
-            return EPSILON;
+            return 51;
         case 52:
             tmp.terminal = true;
             tmp.tok.name = "Right parenthesis";

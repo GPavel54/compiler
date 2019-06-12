@@ -7,6 +7,7 @@ class Lexer
     list<Token> tokens_;
     vector<expre> expressions_;
     friend class Parser;
+    friend class CodeGen;
 public:
     Lexer();
     void initializeMap();

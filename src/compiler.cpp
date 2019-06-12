@@ -1,5 +1,6 @@
 #include "Lexer.h"
 #include "Parser.h"
+#include "CodeGen.h"
 
 int main(int argc, char **argv)
 {
@@ -24,10 +25,20 @@ int main(int argc, char **argv)
     cout << "Table of tokens:" << endl << endl;
     lex.printTable();
 
-    cout << "Making syntax tree..." << endl;
+    cout << "Making syntax analysis..." << endl;
 
     Parser par;
-
+    CodeGen cg(lex);
     par.makeSyntaxTree(lex);
-
+    try {
+        cg.generateAsm();
+    }
+    catch (Mdefinition_exception& ex)
+    {
+        return ex.what();
+    }
+    catch (Ndefined_exception& ex)
+    {
+        return ex.what();
+    }
 }
