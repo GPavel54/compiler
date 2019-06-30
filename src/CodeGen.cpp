@@ -130,6 +130,10 @@ void CodeGen::separateFunc(list<Token>& func)
         func.pop_back();
         for (auto i = func.begin(); i != func.end();)
         {
+            if (func.empty())
+            {
+                break;
+            }
             list<Token>::iterator todel = func.end();
             if (i->name == "Type")
             { //Значит идет объявление глобальной переменной
@@ -198,10 +202,25 @@ void CodeGen::separateFunc(list<Token>& func)
                 {
                     if (i->token == "print")
                     {
-                        if ((++i)->name == "String literal")
+                        string type;
+                        auto toPrint = paranth;
+                        toPrint++;
+                        getVarType(*toPrint, type);
+                        if (type == "char") // печать строки
                         {
-                            
+                            //доделать
                         }
+                        else // печать целочисленной переменной
+                        {
+                            string address;
+                            getVarAddress(*toPrint, address);
+                            text << "\tmov rax, [ " << address << "]" << endl;
+                            text << "\tcall _printRAX" << endl;
+                        }
+                        toPrint++;
+                        toPrint++;
+                        func.erase(i, ++toPrint);
+                        continue;
                     }
                     cout << i->name << " --- function calling" << endl;
                     auto shift = i;
@@ -246,6 +265,41 @@ void CodeGen::separateFunc(list<Token>& func)
                     }
                 }
             }
+            else if (i->token == "if")
+            {
+                auto firstVar = i++;
+                firstVar++;
+                auto sign = firstVar;
+                sign++;
+                auto secondVar = sign;
+                secondVar++;
+                string address;
+                if (firstVar->name == "Identifier")
+                {
+                    getVarAddress(*firstVar, address);
+                    text << "\tmov rcx, [" << address << "]" << endl;
+                }
+                else
+                {
+                    text << "\tmov rcx, " << firstVar->token << endl;
+                }
+                if (secondVar->name == "Identifier")
+                {
+                    getVarAddress(*secondVar, address);
+                    text << "\tmov rax, [" << address << "]" << endl;
+                }
+                else
+                {
+                    text << "\tmov rax, " << firstVar->token << endl;
+                }
+                text << "\tcmp rax, rcx" << endl;
+                if (sign->token == "==")
+                {
+                    text << "\tjne _else" << endl; 
+                }
+                    // getVarAddress(*secondVar, firstAddress);
+                    // text << "\tmov rax, [" << firstAddress << "]" << endl;
+            }
             if (todel != func.end())
             {
                 func.erase(todel);
@@ -262,7 +316,11 @@ void CodeGen::separateFunc(list<Token>& func)
     }
     cout << endl;
     asmfile << "section .bss" << endl;
+    
+    asmfile << "\tdigitSpace resb 100" << endl;
+    asmfile << "\tdigitSpacePos resb 8" << endl;
     asmfile << bss.str();
+    
     asmfile << "section .text" << endl;
     asmfile << "\t global _start" << endl;
     asmfile << "_start:" << endl;
@@ -270,6 +328,41 @@ void CodeGen::separateFunc(list<Token>& func)
     asmfile << "\tmov rax, 60" << endl;
     asmfile << "\tmov rdi, 0" << endl;
     asmfile << "\tsyscall" << endl;
+
+    asmfile << "_printRAX:" << endl;
+    asmfile << "\tmov rcx, digitSpace" << endl;
+    asmfile << "\tmov rbx, 10" << endl;
+    asmfile << "\tmov [rcx], rbx" << endl;
+    asmfile << "\tinc rcx" << endl;
+    asmfile << "\tmov [digitSpacePos], rcx" << endl;
+
+    asmfile << "_printRAXLoop:" << endl;
+    asmfile << "\tmov rdx, 0" << endl;
+    asmfile << "\tmov rbx, 10" << endl;
+    asmfile << "\tdiv rbx" << endl;
+    asmfile << "\tpush rax" << endl;
+    asmfile << "\tadd rdx, 48" << endl;
+    asmfile << "\tmov rcx, [digitSpacePos]" << endl;
+    asmfile << "\tmov [rcx], dl" << endl;
+    asmfile << "\tinc rcx" << endl;
+    asmfile << "\tmov [digitSpacePos], rcx" << endl;
+    asmfile << "\tpop rax" << endl;
+    asmfile << "\tcmp rax, 0" << endl;
+    asmfile << "\tjne _printRAXLoop" << endl;
+
+    asmfile << "_printRAXLoop2:" << endl;
+    asmfile << "\tmov rcx, [digitSpacePos]" << endl;
+    asmfile << "\tmov rax, 1" << endl;
+    asmfile << "\tmov rdi, 1" << endl;
+    asmfile << "\tmov rsi, rcx" << endl;
+    asmfile << "\tmov rdx, 1" << endl;
+    asmfile << "\tsyscall" << endl;
+    asmfile << "\tmov rcx, [digitSpacePos]" << endl;
+    asmfile << "\tdec rcx" << endl;
+    asmfile << "\tmov [digitSpacePos], rcx" << endl;
+    asmfile << "\tcmp rcx, digitSpace" << endl;
+    asmfile << "\tjge _printRAXLoop2" << endl;
+
     cout << asmfile.str();
     // cout << "hmap:" << endl;
     // for (auto i = hmap.begin(); i != hmap.end(); i++)
@@ -381,7 +474,8 @@ void CodeGen::processExpr(Token left, vector<Token>& expression)
         }
     }
     bool noexept = false;
-    for (auto i = types.end() - 1; i > types.begin(); i--)
+    cout << "Types size = " << types.size() << endl;
+    for (auto i = types.begin() + types.size() - 1; i < types.end(); i++)
     {
         if (i->ident == left.token)
         {
@@ -510,11 +604,28 @@ void CodeGen::translateToRpn(vector<Token>& expression)
 void CodeGen::getVarAddress(Token& var, string& address)
 {
     bool noexept = false;
-    for (auto j = types.end() - 1; j > types.begin(); j--)
+    for (auto j = types.begin() + types.size() - 1; j < types.end(); j++)
     {
         if (j->ident == var.token)
         {
             address = j->address;
+            noexept = true;
+        }
+    }
+    if (!noexept)
+    {
+        throw Ndefined_exception(var.token, var.row, var.col); 
+    }
+}
+
+void CodeGen::getVarType(Token& var, string& type)
+{
+    bool noexept = false;
+    for (auto j = types.begin() + types.size() - 1; j < types.end(); j++)
+    {
+        if (j->ident == var.token)
+        {
+            type = j->type;
             noexept = true;
         }
     }

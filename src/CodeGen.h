@@ -32,6 +32,7 @@ public:
     void processExpr(Token left, vector<Token>& expression);
     void translateToRpn(vector<Token>& expression);
     void getVarAddress(Token& var, string& address);
+    void getVarType(Token& var, string& type);
 };
 
 #endif
