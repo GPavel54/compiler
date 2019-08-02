@@ -33,11 +33,7 @@ int main(int argc, char **argv)
     try {
         cg.generateAsm();
     }
-    catch (Mdefinition_exception& ex)
-    {
-        return ex.what();
-    }
-    catch (Ndefined_exception& ex)
+    catch (ASMG_exception& ex)
     {
         return ex.what();
     }

@@ -8,7 +8,18 @@ CodeGen::CodeGen(Lexer& lexer)
 void CodeGen::generateAsm()
 {
     separateToFunctions();
+    createSymbolicTable(*(functions.begin()));
     separateFunc(*(functions.begin()));
+
+    cout << "hmap is :" << endl;
+    int u = 1;
+    for (auto i = hmap.begin(); i != hmap.end(); i++)
+    {
+        cout << u++ << ": " << i->first << " ; " << i->second.type << " ; " << i->second.level << " ; " << i->second.address << endl; 
+    }
+    cout << "ASM: " << endl;
+    createAsm();
+    cout << asmfile.str() << endl;
 }
 
 void CodeGen::separateToFunctions()
@@ -108,8 +119,8 @@ void CodeGen::separateToFunctions()
         }
         else
         {
-            hmap.insert(make_pair(tmp->token, FUNCTION_));
-            types.push_back({tmp->token, (--tmp)->token, FUNCTION_, tmp->token});
+            Info toTable = {(--tmp)->token, FUNCTION_, tmp->token};
+            hmap.insert(make_pair(tmp->token, toTable));
         }
         point++;
     }
@@ -121,372 +132,67 @@ void CodeGen::separateToFunctions()
 
 void CodeGen::separateFunc(list<Token>& func)
 {
-    /*
-    *   Блок обработки функции main
-    */
-    if (func.begin()->token == "{")
-    {
-        func.pop_front();
-        func.pop_back();
-        for (auto i = func.begin(); i != func.end();)
-        {
-            if (func.empty())
-            {
-                break;
-            }
-            list<Token>::iterator todel = func.end();
-            if (i->name == "Type")
-            { //Значит идет объявление глобальной переменной
-                string type = i->token;
-                todel = i;
-                i++;
-                if (hmap.find(i->token) != hmap.end())
-                {
-                    throw Mdefinition_exception(i->token, i->row, i->col);
-                }
-                else
-                {
-                    hmap.insert(make_pair(i->token, 0));
-                    types.push_back({i->token, type, 0, i->token});
-                }
-                auto ifindex = i;
-                ifindex++;
-                if (ifindex->token != "[")
-                {
-                    string out = (type == "char") ? " resb 1" : " resq 1";
-                    bss << "\t" << i->token << out << endl;
-                    if ((++i)->token == ";")
-                    {
-                        func.erase(todel, ++i);
-                        i = func.begin();
-                        continue;
-                    }
-                }
-                else
-                {
-                    auto stringliteral = ifindex;
-                    stringliteral++;
-                    stringliteral++;
-                    stringliteral++;
-                    stringliteral++;
-                    if (stringliteral->name == "String literal")
-                    {
-                        text << "\t" << i->token << " db " << stringliteral->token << ",0" << endl;
-                        stringliteral++;
-                        func.erase(todel, ++stringliteral);
-                        i = func.begin();
-                        continue;
-                    }
-                    else
-                    {
-                        string out = (type == "char") ? " resb " : " resq "; 
-                        string size = (++ifindex)->token;
-                        bss << "\t" << i->token << out << size << endl;
-                        ifindex++;
-                        if ((++ifindex)->token == ";")
-                        {
-                            func.erase(todel, ++ifindex);
-                            i = func.begin();
-                            continue;
-                        }
-                    }
-                }
-            }
-            else if (i->name == "Identifier")
-            {
-                auto paranth = ++i;
-                i--;
-                cout << "Checking : " << i->token << endl;
-                cout << "Second : " << paranth->token << endl;
-                if (paranth->token == "(") // вызов функции
-                {
-                    if (i->token == "print")
-                    {
-                        string type;
-                        auto toPrint = paranth;
-                        toPrint++;
-                        getVarType(*toPrint, type);
-                        if (type == "char") // печать строки
-                        {
-                            //доделать
-                        }
-                        else // печать целочисленной переменной
-                        {
-                            string address;
-                            getVarAddress(*toPrint, address);
-                            text << "\tmov rax, [ " << address << "]" << endl;
-                            text << "\tcall _printRAX" << endl;
-                        }
-                        toPrint++;
-                        toPrint++;
-                        func.erase(i, ++toPrint);
-                        continue;
-                    }
-                    cout << i->name << " --- function calling" << endl;
-                    auto shift = i;
-                    do
-                    {
-                        shift++;
-                    } while (shift->token != ";");
-                    shift++;
-                    cout << "shift to " << shift->token << " row " << shift->row << endl;
-                    func.erase(i, shift);
-                    i = func.begin();
-                }
-                else if (paranth->name != "Logical operator") // присваивание
-                { 
-                    auto ind = i;
-                    ind++;
-                    if (ind->token != "[")
-                    {
-                        auto token = i;
-                        auto exprStart = ++i;
-                        i++;
-                        exprStart++; // сдвинуть до первого токена после =
-                        auto exprEnd = exprStart;
-                        while (exprEnd->token != ";")
-                        {
-                            exprEnd++;
-                        }
-                        vector<Token> expression;
-                        for (auto j = exprStart; j != exprEnd; j++)
-                        {
-                            expression.push_back(*j);
-                        }
-                        processExpr(*token, expression);
-                        func.erase(token, ++exprEnd);
-                        i = func.begin();
-                        continue;
-                    }
-                    else
-                    {
-                        /* присваение в массив*/
-                        cout << "Input to array" << endl;
-                    }
-                }
-            }
-            else if (i->token == "if")
-            {
-                auto firstVar = i++;
-                firstVar++;
-                auto sign = firstVar;
-                sign++;
-                auto secondVar = sign;
-                secondVar++;
-                string address;
-                if (firstVar->name == "Identifier")
-                {
-                    getVarAddress(*firstVar, address);
-                    text << "\tmov rcx, [" << address << "]" << endl;
-                }
-                else
-                {
-                    text << "\tmov rcx, " << firstVar->token << endl;
-                }
-                if (secondVar->name == "Identifier")
-                {
-                    getVarAddress(*secondVar, address);
-                    text << "\tmov rax, [" << address << "]" << endl;
-                }
-                else
-                {
-                    text << "\tmov rax, " << firstVar->token << endl;
-                }
-                text << "\tcmp rax, rcx" << endl;
-                if (sign->token == "==")
-                {
-                    text << "\tjne _else" << endl; 
-                }
-                    // getVarAddress(*secondVar, firstAddress);
-                    // text << "\tmov rax, [" << firstAddress << "]" << endl;
-            }
-            if (todel != func.end())
-            {
-                func.erase(todel);
-                i = func.begin();
-                continue;
-            }
-            i++;
-        }
-    }
-    cout << "After type deleting : " << endl;
+    int level = 0, size = 1;
+    int bp = 0;
     for (auto i = func.begin(); i != func.end(); i++)
     {
-        cout << i->token << " ";
+        if (i->name == "Type") // Обработка строки, которая начинается с названия типа
+        {
+            bool cmp = false;
+            Token type = *i;
+            if (strcmp(i->token.c_str(), "char") == 0)
+            {
+                cmp = true;
+            }
+            Token name = *(++i);
+            bool itsarray = false;
+            if ((++i)->name == "Left index") // Объявление массива
+            {
+                itsarray = true;
+                Token arrSize = *(++i);
+                if (arrSize.name != "Constant" || (++i)->name != "Right index")
+                {
+                    throw StaticSize_exception(arrSize.token, arrSize.row, arrSize.col);
+                }
+                size = stoi(arrSize.token);
+            }
+            else
+            {
+                i--; // вернуться к имени
+            }
+            addVariable((cmp ? 2 : 4) * size, name, type.token, level, bp);
+            if ((++i)->name == "Semi")
+            {
+                continue;
+            }
+            else if (i->name == "Operator =")
+            {
+                if (type.token == "int" && itsarray) // массив не инициализируется
+                {
+                    throw ArrayInit_exception(i->token, i->row, i->col);
+                }
+                else if (type.token == "int")
+                {
+                    vector<Token> expr;
+                    while ((++i)->name != "Semi")
+                    {
+                        expr.push_back(*i);
+                    }
+                    cout << "Expr before Translate" << endl;
+                    printExpr(expr);
+                    translateToRpn(expr);
+                    cout << "Expr after Translate" << endl;
+                    printExpr(expr);
+                }
+            }
+        }
     }
-    cout << endl;
-    asmfile << "section .bss" << endl;
-    
-    asmfile << "\tdigitSpace resb 100" << endl;
-    asmfile << "\tdigitSpacePos resb 8" << endl;
-    asmfile << bss.str();
-    
-    asmfile << "section .text" << endl;
-    asmfile << "\t global _start" << endl;
-    asmfile << "_start:" << endl;
-    asmfile << text.str();
-    asmfile << "\tmov rax, 60" << endl;
-    asmfile << "\tmov rdi, 0" << endl;
-    asmfile << "\tsyscall" << endl;
-
-    asmfile << "_printRAX:" << endl;
-    asmfile << "\tmov rcx, digitSpace" << endl;
-    asmfile << "\tmov rbx, 10" << endl;
-    asmfile << "\tmov [rcx], rbx" << endl;
-    asmfile << "\tinc rcx" << endl;
-    asmfile << "\tmov [digitSpacePos], rcx" << endl;
-
-    asmfile << "_printRAXLoop:" << endl;
-    asmfile << "\tmov rdx, 0" << endl;
-    asmfile << "\tmov rbx, 10" << endl;
-    asmfile << "\tdiv rbx" << endl;
-    asmfile << "\tpush rax" << endl;
-    asmfile << "\tadd rdx, 48" << endl;
-    asmfile << "\tmov rcx, [digitSpacePos]" << endl;
-    asmfile << "\tmov [rcx], dl" << endl;
-    asmfile << "\tinc rcx" << endl;
-    asmfile << "\tmov [digitSpacePos], rcx" << endl;
-    asmfile << "\tpop rax" << endl;
-    asmfile << "\tcmp rax, 0" << endl;
-    asmfile << "\tjne _printRAXLoop" << endl;
-
-    asmfile << "_printRAXLoop2:" << endl;
-    asmfile << "\tmov rcx, [digitSpacePos]" << endl;
-    asmfile << "\tmov rax, 1" << endl;
-    asmfile << "\tmov rdi, 1" << endl;
-    asmfile << "\tmov rsi, rcx" << endl;
-    asmfile << "\tmov rdx, 1" << endl;
-    asmfile << "\tsyscall" << endl;
-    asmfile << "\tmov rcx, [digitSpacePos]" << endl;
-    asmfile << "\tdec rcx" << endl;
-    asmfile << "\tmov [digitSpacePos], rcx" << endl;
-    asmfile << "\tcmp rcx, digitSpace" << endl;
-    asmfile << "\tjge _printRAXLoop2" << endl;
-
-    cout << asmfile.str();
-    // cout << "hmap:" << endl;
-    // for (auto i = hmap.begin(); i != hmap.end(); i++)
-    // {
-    //     cout << i->first << " : " << i->second << endl;
-    // }
-    // cout << "Vector : " << endl;
-    // for (auto i = types.begin(); i < types.end(); i++)
-    // {
-    //     cout << i->ident << " : " << i->level << " : " << i->type << endl;
-    // }
+    cout << "---end---" << endl;
 }
 
 void CodeGen::processExpr(Token left, vector<Token>& expression)
 {
-    translateToRpn(expression);
-    cout << "expr" << endl;
-    for (auto i = expression.begin(); i < expression.end(); i++)
-    {
-        cout << i->token << " ";
-    }
-    cout << endl;
-    for (auto i = expression.begin(); i < expression.end(); i++)
-    {
-        if (i->name == "Constant")
-        {
-            text << "\t" << "push " << i->token << endl;
-        }
-        else if (i->name == "Operator 2")
-        {
-            text << "\t" << "pop rax" << endl;
-            text << "\t" << "mov rcx, rax" << endl;
-            text << "\t" << "pop rax" << endl;
-            if (i->token == "+")
-            {
-                text << "\t" << "add rax,rcx" << endl;
-            } 
-            else
-            {
-                text << "\t" << "sub rax,rcx" << endl;
-            }
-            text << "\t" << "push rax" << endl;
-        }
-        else if (i->name == "Operator 1")
-        {
-            text << "\t" << "pop rax" << endl;
-            text << "\t" << "mov rcx, rax" << endl;
-            text << "\t" << "pop rax" << endl;
-            if (i->token == "*")
-            {
-                text << "\t" << "mul rcx" << endl;
-            } 
-            else
-            {
-                text << "\t" << "div rcx" << endl;
-            }
-            text << "\t" << "push rax" << endl;
-        }
-        else if (i->name == "Identifier")
-        {
-            if ((i+1)->token == "[")
-            {
-                bool noexept = false;
-                string address;
-                for (auto j = types.end() - 1; j > types.begin(); j--)
-                {
-                    if (j->ident == i->token)
-                    {
-                        address = j->address;
-                        noexept = true; 
-                    }
-                }
-                if (!noexept)
-                {
-                    throw Ndefined_exception(i->token, i->row, i->col); 
-                }
-                if ((i+2)->name == "Identifier")
-                {
-                    string address;
-                    getVarAddress(*(i+2), address);
-                    text << "\t" << "mov rax, [" << address << "]" << endl;
-                    getVarAddress(*i, address);
-                    text << "\tpush qword [" << address << "+rax]" << endl;
-                    i += 3;
-                }
-                else
-                {
-                    getVarAddress(*i, address);
-                    text << "\t" << "push qword [" << address << "+" << (i+2)->token << "]" << endl;
-                    i += 3;
-                }
-            }
-            else
-            {
-                bool noexept = false;
-                for (auto j = types.end() - 1; j > types.begin(); j--)
-                {
-                    if (j->ident == i->token)
-                    {
-                        text << "\t" << "push qword " << "[" << j->address << "]" << endl;
-                        noexept = true; 
-                    }
-                }
-                if (!noexept)
-                {
-                    throw Ndefined_exception(i->token, i->row, i->col); 
-                }
-            }
-        }
-    }
-    bool noexept = false;
-    cout << "Types size = " << types.size() << endl;
-    for (auto i = types.begin() + types.size() - 1; i < types.end(); i++)
-    {
-        if (i->ident == left.token)
-        {
-            text << "\tpop qword " << "[" << i->address << "]" << endl;
-            noexept = true; 
-        }
-    }
-    if (!noexept)
-    {
-        throw Ndefined_exception(left.token, left.row, left.col); 
-    }
+    
 }
 
 void CodeGen::translateToRpn(vector<Token>& expression)
@@ -601,36 +307,50 @@ void CodeGen::translateToRpn(vector<Token>& expression)
     expression = out;
 }
 
-void CodeGen::getVarAddress(Token& var, string& address)
+void CodeGen::createSymbolicTable(list<Token>& func)
 {
-    bool noexept = false;
-    for (auto j = types.begin() + types.size() - 1; j < types.end(); j++)
+    vector<string> variables;
+    for (auto i = func.begin(); i != func.end(); i++)
     {
-        if (j->ident == var.token)
+        if (i->name == "Type")
         {
-            address = j->address;
-            noexept = true;
+            variables.push_back((++i)->token);
         }
     }
-    if (!noexept)
-    {
-        throw Ndefined_exception(var.token, var.row, var.col); 
-    }
+    symbolicTable.push_back(variables);
 }
 
-void CodeGen::getVarType(Token& var, string& type)
+void CodeGen::addVariable(int size, Token& token, string& type, int level, int& bp)
 {
-    bool noexept = false;
-    for (auto j = types.begin() + types.size() - 1; j < types.end(); j++)
+    static int sp = 0;
+    auto check = hmap.find(token.token); 
+    if (check != hmap.end() && check->second.level == level)
     {
-        if (j->ident == var.token)
-        {
-            type = j->type;
-            noexept = true;
-        }
+        throw Mdefinition_exception(token.token, token.row, token.col);
     }
-    if (!noexept)
+    sp += size;
+    stringstream ss;
+    ss << sp;
+    Info tmp = {type, level, ss.str()};
+    hmap.insert(make_pair(token.token, tmp));
+    text << "sub rsp, " << size << " ; allocate memory for var " << token.token << endl; // выделение памяти путем смещения вершины стека
+}
+
+void CodeGen::createAsm()
+{
+    asmfile << "section .text" << endl;
+    asmfile << "\tglobal _start" << endl;
+    asmfile << "_start:" << endl;
+    asmfile << "mov rbp, rsp" << endl;
+    asmfile << text.str() << endl;
+}
+
+
+void CodeGen::printExpr(vector<Token>& expr)
+{
+    for (auto i = expr.begin(); i != expr.end(); i++)
     {
-        throw Ndefined_exception(var.token, var.row, var.col); 
+        cout << i->token << " ";
     }
+    cout << endl;
 }

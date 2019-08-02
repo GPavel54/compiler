@@ -4,12 +4,14 @@
 
 using namespace std;
 
+const static string PREFIX = "\033[1;31mError:\033[0;0m ";
+
 class Open_exception: public std::exception
 {
 public:
     int what()
     {
-        cerr << "Cant open file" << endl;
+        cerr << PREFIX << "Cant open file" << endl;
         return 1;
     }
 };
@@ -27,19 +29,21 @@ public:
     }
     int what()
     {
-        cerr << "Unknown sequence " << seq << " at line " << line << endl;
+        cerr << PREFIX << "Unknown sequence " << seq << " at line " << line << endl;
         cerr << "Closing file ..." << endl;
         return 1;
     }
 };
 
-class Mdefinition_exception: public std::exception
+class ASMG_exception : public std::exception
 {
+    protected:
     string ident;
     int row;
     int col;
-public:
-    Mdefinition_exception(string& n, int r, int c)
+    string message;
+    public:
+    ASMG_exception(string& n, int r, int c)
     {
         ident = n;
         row = r;
@@ -47,29 +51,46 @@ public:
     }
     int what()
     {
-        cerr << "Multiply definition of identificator: " << ident << " row = "
+        cerr << PREFIX << message << "\e[1;36m" << ident << "\e[0;0m row = "
             << row << " col = " << col << endl;
         return 1;
     }
 };
 
-class Ndefined_exception: public std::exception
+class Mdefinition_exception: public ASMG_exception
 {
-    string ident;
-    int row;
-    int col;
 public:
-    Ndefined_exception(string& n, int r, int c)
+    Mdefinition_exception(string& n, int r, int c) : ASMG_exception (n, r, c) 
     {
-        ident = n;
-        row = r;
-        col = c;
-    }
-    int what()
-    {
-        cerr << "The identifier didn't define: " << ident << " row = "
-            << row << " col = " << col << endl;
-        return 1;
+        message = "Multiply definition of identificator:";
     }
 };
+
+class Ndefined_exception: public ASMG_exception
+{
+public:
+    Ndefined_exception(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "The identifier didn't define: ";
+    }
+};
+
+class StaticSize_exception: public ASMG_exception
+{
+public:
+    StaticSize_exception(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "Array size must be a constatnt: ";
+    }
+};
+
+class ArrayInit_exception: public ASMG_exception
+{
+public:
+    ArrayInit_exception(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "Do not initialize integer array: ";
+    }
+};
+
 #endif

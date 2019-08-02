@@ -8,16 +8,16 @@
 
 class CodeGen
 {
-    struct Types
+    struct Info
     {
-        string ident;
+        // string ident;
         string type;
         int level;
-        string address;
+        string address; // адрес это смещение от значения в регистре rbp
     };
-    vector<Types> types;
+    vector<vector<string> > symbolicTable;
     list<Token> tokens;
-    unordered_multimap<string, int> hmap;
+    unordered_multimap<string, Info> hmap;
     list<list<Token> > functions;
     list<list<Token> > blocks;
     stringstream bss;
@@ -31,8 +31,12 @@ public:
     void separateFunc(list<Token>& func);
     void processExpr(Token left, vector<Token>& expression);
     void translateToRpn(vector<Token>& expression);
-    void getVarAddress(Token& var, string& address);
-    void getVarType(Token& var, string& type);
+    void createSymbolicTable(list<Token>& func);
+    void createAsm();
+    void addVariable(int size, Token& token, string& type, int level, int& bp);
+
+    /* Debug functions */
+    void printExpr(vector<Token>& expr);
 };
 
 #endif
