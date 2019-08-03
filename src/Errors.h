@@ -57,6 +57,15 @@ class ASMG_exception : public std::exception
     }
 };
 
+class Syntax_exception: public ASMG_exception
+{
+public:
+    Syntax_exception(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "Syntax error in: ";
+    }
+};
+
 class Mdefinition_exception: public ASMG_exception
 {
 public:

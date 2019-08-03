@@ -23,13 +23,21 @@ int main(int argc, char **argv)
         return ex.what();
     }
     cout << "Table of tokens:" << endl << endl;
-    lex.printTable();
+    //lex.printTable();
 
     cout << "Making syntax analysis..." << endl;
 
     Parser par;
     CodeGen cg(lex);
-    par.makeSyntaxTree(lex);
+    try 
+    {
+        par.makeSyntaxTree(lex);
+    }
+    catch (ASMG_exception& ex)
+    {
+        return ex.what();
+    }
+    par.printTree();
     try {
         cg.generateAsm();
     }

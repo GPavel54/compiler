@@ -14,6 +14,7 @@ class CodeGen
         string type;
         int level;
         string address; // адрес это смещение от значения в регистре rbp
+        int size;
     };
     vector<vector<string> > symbolicTable;
     list<Token> tokens;
@@ -34,9 +35,11 @@ public:
     void createSymbolicTable(list<Token>& func);
     void createAsm();
     void addVariable(int size, Token& token, string& type, int level, int& bp);
+    void getArrayValue(Token arr, vector<Token> expression);
 
     /* Debug functions */
-    void printExpr(vector<Token>& expr);
+    void printExpr(vector<Token>& expr);  // выражение
+    void printHashTable();
 };
 
 #endif

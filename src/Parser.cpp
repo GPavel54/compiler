@@ -87,12 +87,9 @@ void Parser::makeSyntaxTree(Lexer& lex)
         *    Перевести это в функцию throw
         *         
         */
-        cout << "Error in your language in row = " << lex.tokens_.front().row << " col = " 
-            << lex.tokens_.front().col << " name = " << lex.tokens_.front().token << endl;
-    }
-    else
-    {
-        // cout << "Syntax analysis : " << endl << tree.str() << endl;
+        throw Syntax_exception(lex.tokens_.front().token, lex.tokens_.front().row, lex.tokens_.front().col);
+        // cout << "Error in your program in row = " << lex.tokens_.front().row << " col = " 
+        //     << lex.tokens_.front().col << " name = " << lex.tokens_.front().token << endl;
     }
 }
 
@@ -1072,6 +1069,11 @@ int Parser::addToStack(string terminalName, string token, string noterminal, int
             tmp.tok.name = "Symbol";
             stack.push_back(tmp);
             break;
+        case 58:
+            tmp.terminal = false;
+            tmp.prod = "Formula";
+            stack.push_back(tmp);
+            break;
     }
     return ret;
 }
@@ -1453,13 +1455,9 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
     }
     if (noterminal == "K")
     {
-        if (terminalName == "Identifier")
+        if (terminalName == "Identifier" || terminalName == "Constant")
         {
-            return 43;
-        }
-        else if (terminalName == "Constant")
-        {
-            return 42;
+            return 58;
         }
         else
         {
@@ -1569,4 +1567,9 @@ int Parser::getRule(string terminalName, string token, string noterminal, int ru
         }
     }
     return 0;
+}
+
+void Parser::printTree()
+{
+    cout << tree.str() << endl;
 }

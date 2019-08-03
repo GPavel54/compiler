@@ -37,6 +37,7 @@ class Parser
     void addToTree(string terminal);
 public:
     void makeSyntaxTree(Lexer & lex);
+    void printTree();
     Parser();
 };
 

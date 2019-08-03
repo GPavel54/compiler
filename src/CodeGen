@@ -70013,12 +70013,14 @@ namespace std __attribute__ ((__visibility__ ("default")))
 # 5 "/home/pavel/Документы/универ/theoryOfLanguages/compiler/src/Errors.h"
 using namespace std;
 
+const static string PREFIX = "\033[1;31mError:\033[0;0m ";
+
 class Open_exception: public std::exception
 {
 public:
     int what()
     {
-        cerr << "Cant open file" << endl;
+        cerr << PREFIX << "Cant open file" << endl;
         return 1;
     }
 };
@@ -70036,19 +70038,21 @@ public:
     }
     int what()
     {
-        cerr << "Unknown sequence " << seq << " at line " << line << endl;
+        cerr << PREFIX << "Unknown sequence " << seq << " at line " << line << endl;
         cerr << "Closing file ..." << endl;
         return 1;
     }
 };
 
-class Mdefinition_exception: public std::exception
+class ASMG_exception : public std::exception
 {
+    protected:
     string ident;
     int row;
     int col;
-public:
-    Mdefinition_exception(string& n, int r, int c)
+    string message;
+    public:
+    ASMG_exception(string& n, int r, int c)
     {
         ident = n;
         row = r;
@@ -70056,9 +70060,45 @@ public:
     }
     int what()
     {
-        cerr << "Multiply definition of identificator: " << ident << " row = "
+        cerr << PREFIX << message << "\e[1;36m" << ident << "\e[0;0m row = "
             << row << " col = " << col << endl;
         return 1;
+    }
+};
+
+class Mdefinition_exception: public ASMG_exception
+{
+public:
+    Mdefinition_exception(string& n, int r, int c) : ASMG_exception (n, r, c)
+    {
+        message = "Multiply definition of identificator:";
+    }
+};
+
+class Ndefined_exception: public ASMG_exception
+{
+public:
+    Ndefined_exception(string& n, int r, int c) : ASMG_exception (n, r, c)
+    {
+        message = "The identifier didn't define: ";
+    }
+};
+
+class StaticSize_exception: public ASMG_exception
+{
+public:
+    StaticSize_exception(string& n, int r, int c) : ASMG_exception (n, r, c)
+    {
+        message = "Array size must be a constatnt: ";
+    }
+};
+
+class ArrayInit_exception: public ASMG_exception
+{
+public:
+    ArrayInit_exception(string& n, int r, int c) : ASMG_exception (n, r, c)
+    {
+        message = "Do not initialize integer array: ";
     }
 };
 # 14 "/home/pavel/Документы/универ/theoryOfLanguages/compiler/src/addfunctions.h" 2
@@ -75021,15 +75061,17 @@ namespace std __attribute__ ((__visibility__ ("default")))
 # 9 "/home/pavel/Документы/универ/theoryOfLanguages/compiler/src/CodeGen.h"
 class CodeGen
 {
-    struct Types
+    struct Info
     {
-        string ident;
+
         string type;
         int level;
+        string address;
+        int size;
     };
-    vector<Types> types;
+    vector<vector<string> > symbolicTable;
     list<Token> tokens;
-    unordered_multimap<string, int> hmap;
+    unordered_multimap<string, Info> hmap;
     list<list<Token> > functions;
     list<list<Token> > blocks;
     stringstream bss;
@@ -75041,6 +75083,14 @@ public:
     void separateToFunctions();
     void generateAsm();
     void separateFunc(list<Token>& func);
+    void processExpr(Token left, vector<Token>& expression);
+    void translateToRpn(vector<Token>& expression);
+    void createSymbolicTable(list<Token>& func);
+    void createAsm();
+    void addVariable(int size, Token& token, string& type, int level, int& bp);
+
+
+    void printExpr(vector<Token>& expr);
 };
 # 2 "/home/pavel/Документы/универ/theoryOfLanguages/compiler/src/CodeGen.cpp" 2
 
@@ -75052,7 +75102,18 @@ CodeGen::CodeGen(Lexer& lexer)
 void CodeGen::generateAsm()
 {
     separateToFunctions();
+    createSymbolicTable(*(functions.begin()));
     separateFunc(*(functions.begin()));
+
+    cout << "hmap is :" << endl;
+    int u = 1;
+    for (auto i = hmap.begin(); i != hmap.end(); i++)
+    {
+        cout << u++ << ": " << i->first << " ; " << i->second.type << " ; " << i->second.level << " ; " << i->second.address << endl;
+    }
+    cout << "ASM: " << endl;
+    createAsm();
+    cout << asmfile.str() << endl;
 }
 
 void CodeGen::separateToFunctions()
@@ -75152,8 +75213,8 @@ void CodeGen::separateToFunctions()
         }
         else
         {
-            hmap.insert(make_pair(tmp->token, 444));
-            types.push_back({tmp->token, (--tmp)->token, 444});
+            Info toTable = {(--tmp)->token, 444, tmp->token, 1};
+            hmap.insert(make_pair(tmp->token, toTable));
         }
         point++;
     }
@@ -75165,122 +75226,252 @@ void CodeGen::separateToFunctions()
 
 void CodeGen::separateFunc(list<Token>& func)
 {
-
-
-
-    if (func.begin()->token == "{")
+    int level = 0, size = 1;
+    int bp = 0;
+    for (auto i = func.begin(); i != func.end(); i++)
     {
-        func.pop_front();
-        func.pop_back();
-        for (auto i = func.begin(); i != func.end(); i++)
+        if (i->name == "Type")
         {
-            cout << " Now checking : " << i->token << endl;
-            list<Token>::iterator todel = func.end();
-            if (i->name == "Type")
+            bool cmp = false;
+            Token type = *i;
+            if (strcmp(i->token.c_str(), "char") == 0)
             {
-                string type = i->token;
-                todel = i;
-                i++;
-                if (hmap.find(i->token) != hmap.end())
+                cmp = true;
+            }
+            Token name = *(++i);
+            bool itsarray = false;
+            if ((++i)->name == "Left index")
+            {
+                itsarray = true;
+                Token arrSize = *(++i);
+                if (arrSize.name != "Constant" || (++i)->name != "Right index")
                 {
-                    throw Mdefinition_exception(i->token, i->row, i->col);
+                    throw StaticSize_exception(arrSize.token, arrSize.row, arrSize.col);
                 }
-                else
+                size = stoi(arrSize.token);
+            }
+            else
+            {
+                i--;
+            }
+            addVariable((cmp ? 2 : 4) * size, name, type.token, level, bp);
+            if ((++i)->name == "Semi")
+            {
+                continue;
+            }
+            else if (i->name == "Operator =")
+            {
+                if (type.token == "int" && itsarray)
                 {
-                    hmap.insert(make_pair(i->token, 0));
-                    types.push_back({i->token, type, 0});
+                    throw ArrayInit_exception(i->token, i->row, i->col);
                 }
-                auto ifindex = i;
-                ifindex++;
-                if (ifindex->token != "[")
+                else if (type.token == "int")
                 {
-                    string out = (type == "char") ? " resb 1" : " resw 1";
-                    bss << "\t" << i->token << out << endl;
-                    if ((++i)->token == ";")
+                    vector<Token> expr;
+                    while ((++i)->name != "Semi")
                     {
-                        func.erase(todel, ++i);
-                        i = func.begin();
-                        continue;
+                        expr.push_back(*i);
                     }
+                    cout << "Expr before Translate" << endl;
+                    printExpr(expr);
+                    translateToRpn(expr);
+                    cout << "Expr after Translate" << endl;
+                    printExpr(expr);
                 }
-                else
+            }
+        }
+        else if (i->name == "Left brace")
+        {
+            level++;
+        }
+        else if (i->name == "Right brace")
+        {
+            for (auto j = hmap.begin(); j != hmap.end(); j++)
+            {
+                int addToSP = 0;
+                if (j->second.level == level)
                 {
-                    auto stringliteral = ifindex;
-                    stringliteral++;
-                    stringliteral++;
-                    stringliteral++;
-                    stringliteral++;
-                    if (stringliteral->name == "String literal")
+                    if (j->second.type == "int")
                     {
-                        text << "\t" << i->token << " db " << stringliteral->token << ",0" << endl;
-                        stringliteral++;
-                        func.erase(todel, ++stringliteral);
-                        i = func.begin();
-                        continue;
+                        addToSP += 4 * j->second.size;
                     }
                     else
                     {
-                        string out = (type == "char") ? " resb " : " resw ";
-                        string size = (++ifindex)->token;
-                        bss << "\t" << i->token << out << size << endl;
-                        ifindex++;
-                        if ((++ifindex)->token == ";")
-                        {
-                            func.erase(todel, ++ifindex);
-                            i = func.begin();
-                            continue;
-                        }
+                        addToSP += 2 * j->second.size;
                     }
+                    hmap.erase(j);
                 }
-            }
-            else if (i->name == "Identifier")
-            {
-                auto paranth = ++i;
-                i--;
-                cout << "Checking : " << i->token << endl;
-                if (paranth->name == "(")
+                if (addToSP != 0)
                 {
-                    cout << i->name << " --- function calling" << endl;
+                    text << "add rsp, " << addToSP << "; freee memory after left code block" << endl;
                 }
-                else
-                {
-                    auto exprStart = ++i;
-                    cout << "exprStart: " << exprStart->token << endl;
-                    i++;
-                    auto exprEnd = exprStart;
-                    while (exprEnd->token != ";")
-                    {
-                        exprEnd++;
-                    }
-                    cout << "exprEnd: " << exprEnd->token << endl;
-                    string expression = "";
-                    for (auto j = exprStart; j != exprEnd; j++)
-                    {
-                        expression += j->token;
-                    }
-                    cout << "Выражение" << expression << endl;
-
-                    i = func.begin();
-                    break;
-                }
-            }
-            if (todel != func.end())
-            {
-                func.erase(todel);
-                i = func.begin();
             }
         }
     }
-    cout << "After type deleting : " << endl;
+    cout << "---end---" << endl;
+}
+
+void CodeGen::processExpr(Token left, vector<Token>& expression)
+{
+
+}
+
+void CodeGen::translateToRpn(vector<Token>& expression)
+{
+
+
+
+
+
+    cout << endl;
+    vector<Token> stack;
+    vector<Token> out;
+    for (auto i = expression.begin(); i < expression.end(); i++)
+    {
+        if (i->name == "Constant")
+        {
+            out.push_back(*i);
+            continue;
+        }
+        else if (i->name == "Identifier")
+        {
+            if ((i+1)->token == "[")
+            {
+                while (i->token != "]")
+                {
+                    out.push_back(*i);
+                    i++;
+                }
+                out.push_back(*i);
+                continue;
+            }
+            else
+            {
+                out.push_back(*i);
+                continue;
+            }
+        }
+        else if (i->name == "Operator 1")
+        {
+            if (stack.empty())
+            {
+                stack.push_back(*i);
+                continue;
+            }
+            auto j = --(stack.end());
+            while (j->name == "Operator 1")
+            {
+                out.push_back(*j);
+                j--;
+                stack.pop_back();
+                if (stack.empty())
+                {
+                    break;
+                }
+            }
+            stack.push_back(*i);
+        }
+        else if (i->name == "Left parenthesis")
+        {
+            stack.push_back(*i);
+        }
+        else if (i->name == "Right parenthesis")
+        {
+            auto j = --(stack.end());
+            while (j->name != "Left parenthesis")
+            {
+                out.push_back(*j);
+                j--;
+                stack.pop_back();
+                if (stack.empty())
+                {
+                    break;
+                }
+            }
+            stack.pop_back();
+            continue;
+        }
+        else if (i->name == "Operator 2")
+        {
+            if (stack.empty())
+            {
+                stack.push_back(*i);
+                continue;
+            }
+            auto j = --(stack.end());
+            while (j->name == "Operator 2" || j->name == "Operator 1")
+            {
+                out.push_back(*j);
+                j--;
+                stack.pop_back();
+                if (stack.empty())
+                {
+                    break;
+                }
+            }
+            stack.push_back(*i);
+        }
+    }
+    while (!stack.empty())
+    {
+        auto j = stack.end() - 1;
+        out.push_back(*j);
+        j--;
+        stack.pop_back();
+    }
+
+
+
+
+
+
+    expression = out;
+}
+
+void CodeGen::createSymbolicTable(list<Token>& func)
+{
+    vector<string> variables;
     for (auto i = func.begin(); i != func.end(); i++)
+    {
+        if (i->name == "Type")
+        {
+            variables.push_back((++i)->token);
+        }
+    }
+    symbolicTable.push_back(variables);
+}
+
+void CodeGen::addVariable(int size, Token& token, string& type, int level, int& bp)
+{
+    static int sp = 0;
+    auto check = hmap.find(token.token);
+    if (check != hmap.end() && check->second.level == level)
+    {
+        throw Mdefinition_exception(token.token, token.row, token.col);
+    }
+    sp += size;
+    stringstream ss;
+    ss << sp;
+    Info tmp = {type, level, ss.str(), size};
+    hmap.insert(make_pair(token.token, tmp));
+    text << "sub rsp, " << size << " ; allocate memory for var " << token.token << " level = " << level << endl;
+}
+
+void CodeGen::createAsm()
+{
+    asmfile << "section .text" << endl;
+    asmfile << "\tglobal _start" << endl;
+    asmfile << "_start:" << endl;
+    asmfile << "mov rbp, rsp" << endl;
+    asmfile << text.str() << endl;
+}
+
+
+void CodeGen::printExpr(vector<Token>& expr)
+{
+    for (auto i = expr.begin(); i != expr.end(); i++)
     {
         cout << i->token << " ";
     }
     cout << endl;
-    asmfile << "section .text" << endl;
-    asmfile << text.str();
-    asmfile << "section .bss" << endl;
-    asmfile << bss.str();
-    cout << asmfile.str();
-
 }

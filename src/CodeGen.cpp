@@ -11,12 +11,6 @@ void CodeGen::generateAsm()
     createSymbolicTable(*(functions.begin()));
     separateFunc(*(functions.begin()));
 
-    cout << "hmap is :" << endl;
-    int u = 1;
-    for (auto i = hmap.begin(); i != hmap.end(); i++)
-    {
-        cout << u++ << ": " << i->first << " ; " << i->second.type << " ; " << i->second.level << " ; " << i->second.address << endl; 
-    }
     cout << "ASM: " << endl;
     createAsm();
     cout << asmfile.str() << endl;
@@ -119,7 +113,7 @@ void CodeGen::separateToFunctions()
         }
         else
         {
-            Info toTable = {(--tmp)->token, FUNCTION_, tmp->token};
+            Info toTable = {(--tmp)->token, FUNCTION_, tmp->token, 1};
             hmap.insert(make_pair(tmp->token, toTable));
         }
         point++;
@@ -158,14 +152,14 @@ void CodeGen::separateFunc(list<Token>& func)
             }
             else
             {
-                i--; // вернуться к имени
+                i--; // вернуться в списке токенов к имени
             }
             addVariable((cmp ? 2 : 4) * size, name, type.token, level, bp);
             if ((++i)->name == "Semi")
             {
                 continue;
             }
-            else if (i->name == "Operator =")
+            else if (i->name == "Operator =")  // инициальзация переменных
             {
                 if (type.token == "int" && itsarray) // массив не инициализируется
                 {
@@ -178,31 +172,84 @@ void CodeGen::separateFunc(list<Token>& func)
                     {
                         expr.push_back(*i);
                     }
-                    cout << "Expr before Translate" << endl;
-                    printExpr(expr);
                     translateToRpn(expr);
                     cout << "Expr after Translate" << endl;
                     printExpr(expr);
+                    processExpr(name, expr);
                 }
             }
         }
+        else if (i->name == "Left brace") // открытие блока
+        {
+            level++;
+        }
+        else if (i->name == "Right brace") // закрытие блока 
+        {
+            int addToSP = 0;
+            for (auto j = hmap.begin(); j != hmap.end();)
+            {
+                if (j->second.level == level)
+                {
+                    addToSP += j->second.size;
+                    hmap.erase(j);
+                    j = hmap.begin();
+                    continue;
+                }
+                j++;
+            }
+            if (addToSP != 0)
+            {
+                text << "add rsp, " << addToSP << "; free memory after left code block" << endl;
+            }
+            level--;
+        }
     }
-    cout << "---end---" << endl;
 }
 
+/*
+ * В эту функцию передается выражение,  
+ * переведенное в обратную польскую запись
+*/
 void CodeGen::processExpr(Token left, vector<Token>& expression)
 {
-    
+    cout << "name = " << left.token << endl;
+    printExpr(expression);
+    for (auto i = expression.begin(); i != expression.end; i++)
+    {
+        if (i->token == "Identifier")
+        {
+            Token name = *i;
+            if ((++i)->name == "Left index")
+            {
+                vector<Token>::iterator start = i;
+                do
+                {
+                    i++;
+                } while (i->token != "Right index");
+                vector<Token> expr(start, i);
+                getArrayValue(name, expr);
+            }
+            else
+            {
+                text << "push " << (hmap.find(i->token)->second.size == 2) ? "word " : "dword ";
+                text << 
+                // продолжить отсюда
+            }
+        }
+        if (i->token == "Constant")
+        {
+            text << "push " << i->token;
+        }
+    }
+}
+
+void CodeGen::getArrayValue(Token arr, vector<Token> expression)
+{
+
 }
 
 void CodeGen::translateToRpn(vector<Token>& expression)
 {
-    // cout << "Выражение" << endl;
-    // for (auto i = expression.begin(); i < expression.end();i++)
-    // {
-    //     cout << i->token << " ";
-    // }
-    cout << endl;
     vector<Token> stack;
     vector<Token> out;
     for (auto i = expression.begin(); i < expression.end(); i++)
@@ -214,13 +261,40 @@ void CodeGen::translateToRpn(vector<Token>& expression)
         }
         else if (i->name == "Identifier")
         {
-            if ((i+1)->token == "[")
+            if ((i + 1) != expression.end() && (i+1)->token == "[")
             {
-                while (i->token != "]")
+                /*
+                * Необходимо выполнить преобразование выражения, 
+                * которое является смещением от начала вектора
+                */
+                out.push_back(*i); // имя массива
+                out.push_back(*(++i));
+                vector<Token>::iterator start = i + 1;
+                int toSkip = 0;
+                while (1)//i->token != "]"
                 {
-                    out.push_back(*i);
+                    if (i->token == "[")
+                    {
+                        toSkip++;
+                    }
+                    if (i->token == "]")
+                    {
+                        toSkip--;
+                        if (toSkip == 0)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                    }
                     i++;
                 }
+                vector<Token>::iterator end = i;
+                vector<Token> indexExpr(start, end);
+                printExpr(indexExpr);
+                translateToRpn(indexExpr);
+                out.insert(out.end(), indexExpr.begin(), indexExpr.end());
                 out.push_back(*i);
                 continue;
             }
@@ -298,12 +372,6 @@ void CodeGen::translateToRpn(vector<Token>& expression)
         j--;
         stack.pop_back();
     }
-    // cout << "expr" << endl;
-    // for (auto i = out.begin(); i < out.end(); i++)
-    // {
-    //     cout << i->token << " ";
-    // }
-    // cout << endl;
     expression = out;
 }
 
@@ -331,9 +399,9 @@ void CodeGen::addVariable(int size, Token& token, string& type, int level, int& 
     sp += size;
     stringstream ss;
     ss << sp;
-    Info tmp = {type, level, ss.str()};
+    Info tmp = {type, level, ss.str(), size};
     hmap.insert(make_pair(token.token, tmp));
-    text << "sub rsp, " << size << " ; allocate memory for var " << token.token << endl; // выделение памяти путем смещения вершины стека
+    text << "sub rsp, " << size << " ; allocate memory for var " << token.token << " level = " << level << endl; // выделение памяти путем смещения вершины стека
 }
 
 void CodeGen::createAsm()
@@ -353,4 +421,13 @@ void CodeGen::printExpr(vector<Token>& expr)
         cout << i->token << " ";
     }
     cout << endl;
+}
+
+void CodeGen::printHashTable()
+{
+    int counter = 1;
+    for (auto j = hmap.begin(); j != hmap.end(); j++)
+    {
+        cout << counter << ": " << j->first << " | " << j->second.size << " | " << j->second.type << endl;
+    }
 }
