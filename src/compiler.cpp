@@ -22,8 +22,8 @@ int main(int argc, char **argv)
     {
         return ex.what();
     }
-    cout << "Table of tokens:" << endl << endl;
-    //lex.printTable();
+    // cout << "Table of tokens:" << endl << endl;
+    // lex.printTable();
 
     cout << "Making syntax analysis..." << endl;
 
@@ -37,7 +37,6 @@ int main(int argc, char **argv)
     {
         return ex.what();
     }
-    par.printTree();
     try {
         cg.generateAsm();
     }

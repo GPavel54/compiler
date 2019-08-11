@@ -3,6 +3,7 @@
 CodeGen::CodeGen(Lexer& lexer)
 {
     tokens = lexer.tokens_;
+    sp = 0;
 }
 
 void CodeGen::generateAsm()
@@ -126,10 +127,11 @@ void CodeGen::separateToFunctions()
 
 void CodeGen::separateFunc(list<Token>& func)
 {
-    int level = 0, size = 1;
+    int level = 0;
     int bp = 0;
     for (auto i = func.begin(); i != func.end(); i++)
     {
+        int size = 1;
         if (i->name == "Type") // Обработка строки, которая начинается с названия типа
         {
             bool cmp = false;
@@ -175,6 +177,7 @@ void CodeGen::separateFunc(list<Token>& func)
                     translateToRpn(expr);
                     cout << "Expr after Translate" << endl;
                     printExpr(expr);
+                    text << "; translated initiation exrpession" << endl;
                     processExpr(name, expr);
                 }
             }
@@ -214,38 +217,162 @@ void CodeGen::processExpr(Token left, vector<Token>& expression)
 {
     cout << "name = " << left.token << endl;
     printExpr(expression);
-    for (auto i = expression.begin(); i != expression.end; i++)
+    for (auto i = expression.begin(); i != expression.end(); i++)
     {
-        if (i->token == "Identifier")
+        if (i->name == "Identifier")
         {
             Token name = *i;
+            if (hmap.find(i->token) == hmap.end())
+            {
+                throw Ndefined_exception(i->token, i->row, i->col);
+            }
             if ((++i)->name == "Left index")
             {
                 vector<Token>::iterator start = i;
                 do
                 {
                     i++;
-                } while (i->token != "Right index");
-                vector<Token> expr(start, i);
-                getArrayValue(name, expr);
+                } while (i->name != "Right index");
+                vector<Token> expr(start, i + 1);
+                getArrayValue(name.token, expr);
             }
             else
             {
-                text << "push " << (hmap.find(i->token)->second.size == 2) ? "word " : "dword ";
-                text << 
+                // text << "push " << (hmap.find(i->token)->second.size == 2) ? "word " : "dword "; // это исправить
+                //text << 
                 // продолжить отсюда
             }
         }
         if (i->token == "Constant")
         {
-            text << "push " << i->token;
+            // text << "push " << i->token;
+            text << "mov [rsp], dword " << i->token << endl;
+            text << "sub rsp, 4" << endl;
         }
     }
 }
 
-void CodeGen::getArrayValue(Token arr, vector<Token> expression)
-{
 
+/**
+ * Обработка случая, если в индекс массива вложен другой иднекс
+ * после ее исполнения на вершине стека окажется 4х байтное необходимое значение
+*/
+void CodeGen::getArrayValue(string& name, vector<Token> expression)
+{
+    cout << "trying to get array value of " << endl;
+    printExpr(expression);
+    for (auto i = expression.begin(); i != expression.end(); i++)
+    {
+        if (i->name == "Constant")
+        {
+            // text << "push dword " << i->token << endl;
+            text << "mov [rsp], dword " << i->token << endl;
+            text << "sub rsp, 4" << endl;
+        }
+        else if (i->name == "Identifier")  // обработка идентификатора выражения
+        {
+            if (hmap.find(i->token) == hmap.end())
+            {
+                throw Ndefined_exception(i->token, i->row, i->col);
+            }
+            if ((i+1)->token == "[")
+            {
+                throw Nesting_exception((i+1)->token, (i+1)->row, (i+1)->col);
+            }
+            else
+            {
+                if (hmap.find(i->name)->second.type == "char")
+                {
+                    text << "xor eax, eax" << endl;
+                    // text << "mov ax, [rbp - " << hmap.find(i->name)->second.address << "]" << endl;
+                    text << "mov r8, rbp" << endl;
+                    text << "sub r8, " << hmap.find(i->name)->second.address << endl;
+                    text << "mov ax, [r8]" << endl;
+                    text << "mov [rsp], eax" << endl;
+                    text << "add rsp, 2" << endl;
+                }
+                else
+                {
+                    // text << "push dword [rbp - " << hmap.find(i->name)->second.address << "]" << endl;
+                    text << "mov r8, rbp" << endl;
+                    text << "sub r8, " << hmap.find(i->name)->second.address << endl;
+                    text << "mov eax, [r8]" << endl;
+                    text << "mov [rsp], eax" << endl;
+                    text << "add rsp, 4" << endl;
+                }
+            }
+        }
+        else if (i->name == "Operator 1" || i->name == "Operator 2")
+        {
+            if (i->token == "+")
+            {
+                // text << "pop dword r8d" << endl;
+                // text << "pop dword r9d" << endl;
+                // text << "push dword r8d" << endl;
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov r9d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "add r8d, r9d" << endl;
+                text << "mov [rsp], r8d" << endl;
+                text << "add rsp, 4" << endl;
+            }
+            else if (i->token == "-")
+            {
+                // text << "pop dword r8d" << endl;
+                // text << "pop dword r9d" << endl;
+                // text << "push dword r9d" << endl;
+                
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov r9d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "sub r9d, r8d" << endl;
+                text << "mov [rsp], r9d" << endl;
+                text << "add rsp, 4" << endl;
+            }
+            else if (i->token == "*")
+            {
+                // text << "pop dword r8d" << endl;
+                // text << "pop dword r9d" << endl;
+                // text << "mul r8d, r9d" << endl;
+                // text << "push dword r8d" << endl;
+
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov r9d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mul r8d, r9d" << endl;
+                text << "mov [rsp], r8d" << endl;
+                text << "add rsp, 4" << endl;
+            }
+            else if (i->token == "/")
+            {
+                // text << "pop dword eax" << endl;
+                // text << "pop dword r8d" << endl;
+                // text << "div r8d" << endl;
+                // text << "push dword eax" << endl;
+
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov eax, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "div r8d" << endl;
+                text << "mov [rsp], eax" << endl;
+                text << "add rsp, 4" << endl;
+
+            }
+        }
+    }
+    /**
+     * Смещение от начала массива вычисленно и хранится на вершине стека
+     * теперь необходимо вместо этого смещения поместить нужное значение
+    */
+    text << "mov r8d, [rsp]" << endl;
+    text << "add rsp, 4" << endl;
+    text << "mov r9, rbp" << endl;
+    text << "sub r9, " << hmap.find(name)->second.address << endl;
+    text << "add r9d, r8d" << endl;
 }
 
 void CodeGen::translateToRpn(vector<Token>& expression)
@@ -390,7 +517,6 @@ void CodeGen::createSymbolicTable(list<Token>& func)
 
 void CodeGen::addVariable(int size, Token& token, string& type, int level, int& bp)
 {
-    static int sp = 0;
     auto check = hmap.find(token.token); 
     if (check != hmap.end() && check->second.level == level)
     {
@@ -406,9 +532,13 @@ void CodeGen::addVariable(int size, Token& token, string& type, int level, int& 
 
 void CodeGen::createAsm()
 {
+    asmfile << "extern printf" << endl;
+    asmfile << "section .data" << endl;
+    asmfile << "formatint db '%d', 0" << endl;
+    asmfile << "formatstr db '%s', 0" << endl;
     asmfile << "section .text" << endl;
-    asmfile << "\tglobal _start" << endl;
-    asmfile << "_start:" << endl;
+    asmfile << "\tglobal main" << endl;
+    asmfile << "main:" << endl;
     asmfile << "mov rbp, rsp" << endl;
     asmfile << text.str() << endl;
 }

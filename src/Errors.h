@@ -66,6 +66,15 @@ public:
     }
 };
 
+class Nesting_exception: public ASMG_exception
+{
+public:
+    Nesting_exception(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "This version of compiler can't process triple and more nesting as index. Change this: ";
+    }
+};
+
 class Mdefinition_exception: public ASMG_exception
 {
 public:
