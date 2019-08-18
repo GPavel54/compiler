@@ -179,8 +179,8 @@ void CodeGen::separateFunc(list<Token>& func)
                     translateToRpn(expr);
                     cout << "Expr after Translate" << endl;
                     printExpr(expr);
-                    text << "; translated initiation exrpession" << endl;
                     processExpr(name, expr);
+                    text << "; translated initiation exrpession" << endl;
                 }
             }
         }
@@ -215,7 +215,7 @@ void CodeGen::separateFunc(list<Token>& func)
             {
                 auto err = i;
                 i++;
-                auto toPrint = ++i, begin = i; // begin - '('
+                auto toPrint = ++i, begin = i;  // begin - after (
                 // Проверка на переданные параметры
                 int args = 0;
                 do
@@ -244,10 +244,91 @@ void CodeGen::separateFunc(list<Token>& func)
                 {
                     //Продолжить отсюда, печать результата
                 }
-                else if (i->name == "String literal")
+                else if (i->name == "String literal") // Рапечатать строку
                 {
 
                 }
+                else if ((++i)->name == "Semi") // распечатать переменную
+                {
+                    if (hmap.find(toPrint->token) == hmap.end())
+                    {
+                        throw Ndefined_exception(toPrint->token, toPrint->row, toPrint->col);
+                    }
+                    text << "mov r8, rbp" << endl;
+                    text << "sub r8, " << hmap.find(toPrint->token)->second.address << endl;
+                    if (hmap.find(toPrint->token)->second.type == "char")
+                    {
+                        text << "mov ax, [r8]" << endl;
+                    }
+                    else
+                    {
+                        text << "mov eax, [r8]" << endl;
+                    }
+                    //В eax находится значение, которое необходимо распечатать
+                    //Копирование стека в зарезервированную в bss область
+                    text << "mov [saved_stack], rbp" << endl;
+                    text << "mov [saved_stack + 8], rsp" << endl;
+                    text << "mov r9, rbp" << endl;
+                    text << "sub r9, rsp" << endl;
+                    text << "mov r11, saved_stack" << endl;
+                    text << "add r11, 16" << endl;
+
+                    static int o = 0;
+                    text << "move" << o << ":" << "cmp r9, 0" << endl;
+                    text << "je out" << o << endl;
+                    text << "mov r10w, [rsp]" << endl;
+                    text << "mov [r11], r10w" << endl;
+                    text << "add rsp, 2" << endl;
+                    text << "sub r9, 2" << endl;
+                    text << "add r11, 2" << endl;
+                    text << "jmp move" << o << endl;
+                    text << "out" << o << ":" << endl;
+                    //Стек перенесен в зарезервированную область
+                    if (hmap.find(toPrint->token)->second.type == "char")
+                    {
+                        if (hmap.find(toPrint->token)->second.size == 2) // Печать одного символа
+                        {
+                            text << "mov rdi, formatchar" << endl;
+                            text << "mov esi, eax" << endl;
+                            text << "xor rax, rax" << endl;
+                            text << "call printf" << endl;
+                        }
+                        else // Печать строки
+                        {
+
+                        }
+                    }
+                    else if (hmap.find(toPrint->token)->second.type == "int")
+                    {
+                        text << "mov rdi, formatint" << endl;
+                        text << "mov esi, eax" << endl;
+                        text << "xor rax, rax" << endl;
+                        text << "call printf" << endl;
+                    }
+
+                    //Восстановление стека
+                    text << "mov rbp, [saved_stack]" << endl;
+                    text << "mov r8, rbp" << endl;
+                    text << "mov r9, [saved_stack + 8]" << endl;
+                    text << "sub r8, r9" << endl;
+                    text << "add r8, 16" << endl;
+                    text << "mov r10, saved_stack" << endl;
+                    text << "add r10, r8" << endl;
+                    text << "retur" << o << ":" << " cmp r8, 16" << endl;
+                    text << "je outt" << o << endl;
+                    text << "sub rsp, 2" << endl;
+                    text << "sub r10, 2" << endl;
+                    text << "mov r11w, [r10]" << endl;
+                    text << "mov [rsp], r11w" << endl;
+                    text << "sub r8, 2" << endl;
+                    text << "jmp retur" << o << endl;
+                    text << "outt" << o << ":" << endl;
+                    o++;
+                }
+            }
+            else if ((++i)->name == "Operator =") // Присвоение значения переменной
+            {
+                
             }
         }
     }
@@ -655,10 +736,11 @@ void CodeGen::createAsm()
 {
     asmfile << "extern printf" << endl;
     asmfile << "section .data" << endl;
-    asmfile << "formatint db '%d', 0" << endl;
+    asmfile << "formatint db '%d ', 0" << endl;
     asmfile << "formatstr db '%s', 0" << endl;
+    asmfile << "formatchar db '%c', 0" << endl;
     asmfile << "section .bss" << endl;
-    asmfile << "saved_stack: \t resw " << reserved_memory / 2 << "; this is the memory to copy stack to" << endl;
+    asmfile << "saved_stack: \t resw " << (reserved_memory) + 16 << "; this is the memory to copy stack to" << endl;
     asmfile << "section .text" << endl;
     asmfile << "\tglobal main" << endl;
     asmfile << "main:" << endl;
