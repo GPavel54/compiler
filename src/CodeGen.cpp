@@ -4,6 +4,8 @@ CodeGen::CodeGen(Lexer& lexer)
 {
     tokens = lexer.tokens_;
     sp = 0;
+    reserved_memory = 0;
+    memory_counter = 0;
 }
 
 void CodeGen::generateAsm()
@@ -203,8 +205,50 @@ void CodeGen::separateFunc(list<Token>& func)
             if (addToSP != 0)
             {
                 text << "add rsp, " << addToSP << "; free memory after left code block" << endl;
+                memory_counter -= addToSP;
             }
             level--;
+        }
+        if (i->name == "Identifier")
+        {
+            if (i->token == "print")
+            {
+                auto err = i;
+                i++;
+                auto toPrint = ++i, begin = i; // begin - '('
+                // Проверка на переданные параметры
+                int args = 0;
+                do
+                {
+                    i++;
+                    if (i->name == "String literal")
+                    {
+                        args++;
+                    }
+                    else if (i->name == "Left index")
+                    {
+                        args++;
+                        while (i->name != "Right index")
+                        {
+                            i++;
+                        }
+                    }
+                } while (i->name != "Semi");
+                if (args > 1)
+                {
+                    throw Print_exception(err->token, err->row, err->col);
+                }
+                i = begin;
+                // Конец проверки
+                if ((++i)->name == "Left index") // Распечатать значение массива
+                {
+                    //Продолжить отсюда, печать результата
+                }
+                else if (i->name == "String literal")
+                {
+
+                }
+            }
         }
     }
 }
@@ -213,7 +257,7 @@ void CodeGen::separateFunc(list<Token>& func)
  * В эту функцию передается выражение,  
  * переведенное в обратную польскую запись
 */
-void CodeGen::processExpr(Token left, vector<Token>& expression)
+void CodeGen::processExpr(Token left, vector<Token>& expression, int shift)
 {
     cout << "name = " << left.token << endl;
     printExpr(expression);
@@ -226,7 +270,7 @@ void CodeGen::processExpr(Token left, vector<Token>& expression)
             {
                 throw Ndefined_exception(i->token, i->row, i->col);
             }
-            if ((++i)->name == "Left index")
+            if ((++i)->name == "Left index") // если эта переменная - массив
             {
                 vector<Token>::iterator start = i;
                 do
@@ -236,19 +280,101 @@ void CodeGen::processExpr(Token left, vector<Token>& expression)
                 vector<Token> expr(start, i + 1);
                 getArrayValue(name.token, expr);
             }
-            else
+            else  // просто переменная
             {
-                // text << "push " << (hmap.find(i->token)->second.size == 2) ? "word " : "dword "; // это исправить
-                //text << 
-                // продолжить отсюда
+                text << "mov r8, rbp" << endl;
+                if (hmap.find(i->name)->second.type == "char")
+                {
+                    text << "xor eax, eax" << endl;
+                    text << "sub r8, " << hmap.find(i->name)->second.address << endl;
+                    text << "sub rsp, 4" << endl;
+                    text << "mov ax, [r8]" << endl;
+                    text << "mov [rsp], eax" << endl;
+                }
+                else
+                {
+                    text << "xor eax, eax" << endl;
+                    text << "sub r8, " << hmap.find(i->name)->second.address << endl;
+                    text << "sub rsp, 4" << endl;
+                    text << "mov eax, [r8]" << endl;
+                    text << "mov [rsp], eax" << endl;
+                }
             }
         }
-        if (i->token == "Constant")
+        else if (i->name == "Constant")
         {
             // text << "push " << i->token;
-            text << "mov [rsp], dword " << i->token << endl;
             text << "sub rsp, 4" << endl;
+            text << "mov [rsp], dword " << i->token << endl;
         }
+        else if (i->name == "Operator 1" || i->name == "Operator 2")
+        {
+            if (i->token == "+")
+            {
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov r9d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "add r8d, r9d" << endl;
+                text << "sub rsp, 4" << endl;
+                text << "mov [rsp], r8d" << endl;
+            }
+            else if (i->token == "-")
+            {
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov r9d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "sub r9d, r8d" << endl;
+                text << "sub rsp, 4" << endl;
+                text << "mov [rsp], r9d" << endl;
+            }
+            else if (i->token == "*")
+            {
+                text << "mov eax, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov ebx, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "imul ebx" << endl;
+                text << "sub rsp, 4" << endl;
+                text << "mov [rsp], eax" << endl;
+            }
+            else if (i->token == "/")
+            {
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "mov eax, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                text << "div r8d" << endl;
+                text << "sub rsp, 4" << endl;
+                text << "mov [rsp], eax" << endl;
+
+            }
+        }
+    }
+    /**
+     * На вершине стека находится значение вычисленного выражения.
+     *  Необходимо записать его в заданную переменную
+    */
+    //Перенесли значение выражение в регистр
+    text << "mov r8d, [rsp]" << endl;
+    text << "add rsp, 4" << endl;
+
+    //Сместились к этой переменной
+    text << "mov r9, rbp" << endl;
+    text << "sub r9, " << hmap.find(left.token)->second.address << endl;
+    
+    if (shift != 0)
+    {
+        text << "add r9, " << shift << endl;
+    }
+    if (hmap.find(left.token)->second.type == "char")
+    {
+        text << "mov [r9], r8w" << endl;
+    }
+    else
+    {
+        text << "mov [r9], r8d" << endl;
     }
 }
 
@@ -266,8 +392,8 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
         if (i->name == "Constant")
         {
             // text << "push dword " << i->token << endl;
-            text << "mov [rsp], dword " << i->token << endl;
             text << "sub rsp, 4" << endl;
+            text << "mov [rsp], dword " << i->token << endl;
         }
         else if (i->name == "Identifier")  // обработка идентификатора выражения
         {
@@ -288,8 +414,8 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
                     text << "mov r8, rbp" << endl;
                     text << "sub r8, " << hmap.find(i->name)->second.address << endl;
                     text << "mov ax, [r8]" << endl;
+                    text << "sub rsp, 4" << endl;
                     text << "mov [rsp], eax" << endl;
-                    text << "add rsp, 2" << endl;
                 }
                 else
                 {
@@ -297,8 +423,8 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
                     text << "mov r8, rbp" << endl;
                     text << "sub r8, " << hmap.find(i->name)->second.address << endl;
                     text << "mov eax, [r8]" << endl;
+                    text << "sub rsp, 4" << endl;
                     text << "mov [rsp], eax" << endl;
-                    text << "add rsp, 4" << endl;
                 }
             }
         }
@@ -306,60 +432,43 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
         {
             if (i->token == "+")
             {
-                // text << "pop dword r8d" << endl;
-                // text << "pop dword r9d" << endl;
-                // text << "push dword r8d" << endl;
                 text << "mov r8d, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
                 text << "mov r9d, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
                 text << "add r8d, r9d" << endl;
+                text << "sub rsp, 4" << endl;
                 text << "mov [rsp], r8d" << endl;
-                text << "add rsp, 4" << endl;
             }
             else if (i->token == "-")
             {
-                // text << "pop dword r8d" << endl;
-                // text << "pop dword r9d" << endl;
-                // text << "push dword r9d" << endl;
-                
                 text << "mov r8d, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
                 text << "mov r9d, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
                 text << "sub r9d, r8d" << endl;
+                text << "sub rsp, 4" << endl;
                 text << "mov [rsp], r9d" << endl;
-                text << "add rsp, 4" << endl;
             }
             else if (i->token == "*")
             {
-                // text << "pop dword r8d" << endl;
-                // text << "pop dword r9d" << endl;
-                // text << "mul r8d, r9d" << endl;
-                // text << "push dword r8d" << endl;
-
-                text << "mov r8d, [rsp]" << endl;
+                text << "mov eax, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
-                text << "mov r9d, [rsp]" << endl;
+                text << "mov ebx, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
-                text << "mul r8d, r9d" << endl;
-                text << "mov [rsp], r8d" << endl;
-                text << "add rsp, 4" << endl;
+                text << "imul ebx" << endl;
+                text << "sub rsp, 4" << endl;
+                text << "mov [rsp], eax" << endl;
             }
             else if (i->token == "/")
             {
-                // text << "pop dword eax" << endl;
-                // text << "pop dword r8d" << endl;
-                // text << "div r8d" << endl;
-                // text << "push dword eax" << endl;
-
                 text << "mov r8d, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
                 text << "mov eax, [rsp]" << endl;
                 text << "add rsp, 4" << endl;
                 text << "div r8d" << endl;
+                text << "sub rsp, 4" << endl;
                 text << "mov [rsp], eax" << endl;
-                text << "add rsp, 4" << endl;
 
             }
         }
@@ -372,7 +481,14 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
     text << "add rsp, 4" << endl;
     text << "mov r9, rbp" << endl;
     text << "sub r9, " << hmap.find(name)->second.address << endl;
+    text << "mov r10, r9" << endl;
     text << "add r9d, r8d" << endl;
+    text << "shr r10, 32" << endl;
+    text << "shl r10, 32" << endl;
+    text << "or r9, r10" << endl;
+    text << "mov r10d, [r9]" << endl;
+    text << "sub rsp, 4 \t; mov to stack array value" << endl;
+    text << "mov [rsp], r10d" << endl;
 }
 
 void CodeGen::translateToRpn(vector<Token>& expression)
@@ -528,6 +644,11 @@ void CodeGen::addVariable(int size, Token& token, string& type, int level, int& 
     Info tmp = {type, level, ss.str(), size};
     hmap.insert(make_pair(token.token, tmp));
     text << "sub rsp, " << size << " ; allocate memory for var " << token.token << " level = " << level << endl; // выделение памяти путем смещения вершины стека
+    memory_counter += size;
+    if (memory_counter > reserved_memory)
+    {
+        reserved_memory = memory_counter;
+    }
 }
 
 void CodeGen::createAsm()
@@ -536,11 +657,14 @@ void CodeGen::createAsm()
     asmfile << "section .data" << endl;
     asmfile << "formatint db '%d', 0" << endl;
     asmfile << "formatstr db '%s', 0" << endl;
+    asmfile << "section .bss" << endl;
+    asmfile << "saved_stack: \t resw " << reserved_memory / 2 << "; this is the memory to copy stack to" << endl;
     asmfile << "section .text" << endl;
     asmfile << "\tglobal main" << endl;
     asmfile << "main:" << endl;
     asmfile << "mov rbp, rsp" << endl;
     asmfile << text.str() << endl;
+    asmfile << "ret" << endl;
 }
 
 

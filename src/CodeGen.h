@@ -17,6 +17,7 @@ class CodeGen
         int size;
     };
     int sp;
+    int reserved_memory, memory_counter;
     vector<vector<string> > symbolicTable;
     list<Token> tokens;
     unordered_multimap<string, Info> hmap;
@@ -31,12 +32,12 @@ public:
     void separateToFunctions(); // разбиение на функции
     void generateAsm();  // основная функция
     void separateFunc(list<Token>& func);  // обработка функций
-    void processExpr(Token left, vector<Token>& expression); // обработка выражения
+    void processExpr(Token left, vector<Token>& expression, int shift = 0); // обработка выражения
     void translateToRpn(vector<Token>& expression); // перевод переданного выражения в обратную польскую запись
     void createSymbolicTable(list<Token>& func); 
     void createAsm();  // создание ассемблерного файла
     void addVariable(int size, Token& token, string& type, int level, int& bp); // добавление переменной в хэш таблицу
-    void getArrayValue(string& name,vector<Token> expression); // возвращает адрес, в который записал требуемое значение
+    void getArrayValue(string& name,vector<Token> expression); // помещает на вершину стэка требуемое значение
 
     /* Debug functions */
     void printExpr(vector<Token>& expr);  // выражение

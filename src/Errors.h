@@ -111,4 +111,13 @@ public:
     }
 };
 
+class Print_exception: public ASMG_exception
+{
+public:
+    Print_exception(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "Wrong number of arguments(expected 1): ";
+    }
+};
+
 #endif
