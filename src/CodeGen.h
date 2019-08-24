@@ -39,6 +39,9 @@ public:
     void addVariable(int size, Token& token, string& type, int level, int& bp); // добавление переменной в хэш таблицу
     void getArrayValue(string& name,vector<Token> expression); // помещает на вершину стэка требуемое значение
 
+    /* Еще не до конца протестированные функции */
+    void printVariable(bool integ); // распечатывает значение, которое находится на вершине стека
+
     /* Debug functions */
     void printExpr(vector<Token>& expr);  // выражение
     void printHashTable();

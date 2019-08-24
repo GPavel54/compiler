@@ -2,11 +2,9 @@ class Program
 {
     static void Main()
     {
-        int y = 45;
+        int y;
+        y = 65 * 54 - 233421;
         print(y);
-        print(y);
-        char t = 60;
-        print(t);
     }
 }
 

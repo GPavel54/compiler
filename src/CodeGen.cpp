@@ -182,6 +182,10 @@ void CodeGen::separateFunc(list<Token>& func)
                     processExpr(name, expr);
                     text << "; translated initiation exrpession" << endl;
                 }
+                else if (type.token == "char" && itsarray)
+                {
+                    // доделать присвоение значения строки
+                }
             }
         }
         else if (i->name == "Left brace") // открытие блока
@@ -211,6 +215,7 @@ void CodeGen::separateFunc(list<Token>& func)
         }
         if (i->name == "Identifier")
         {
+            auto ident = i;
             if (i->token == "print")
             {
                 auto err = i;
@@ -243,6 +248,7 @@ void CodeGen::separateFunc(list<Token>& func)
                 if ((++i)->name == "Left index") // Распечатать значение массива
                 {
                     //Продолжить отсюда, печать результата
+
                 }
                 else if (i->name == "String literal") // Рапечатать строку
                 {
@@ -328,7 +334,16 @@ void CodeGen::separateFunc(list<Token>& func)
             }
             else if ((++i)->name == "Operator =") // Присвоение значения переменной
             {
-                
+                vector<Token> expr;
+                while ((++i)->name != "Semi")
+                {
+                    expr.push_back(*i);
+                }
+                translateToRpn(expr);
+                cout << "Expr after Translate" << endl;
+                printExpr(expr);
+                processExpr(*ident, expr);
+                text << "; translated exrpession" << endl;
             }
         }
     }
@@ -766,4 +781,9 @@ void CodeGen::printHashTable()
     {
         cout << counter << ": " << j->first << " | " << j->second.size << " | " << j->second.type << endl;
     }
+}
+
+void printVariable(bool integ)
+{
+    
 }
