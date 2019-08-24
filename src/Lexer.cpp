@@ -181,7 +181,7 @@ void Lexer::initializeMap()
     expressions_.push_back(tmp);
 
     tmp.name = "String literal";
-    tmp.expression = "^\"[a-zA-Z0-9\\s+-=]*\"";
+    tmp.expression = "^\"[a-zA-Z0-9\\s+-=!]*\"";
     expressions_.push_back(tmp);
 
     tmp.name = "Identifier";

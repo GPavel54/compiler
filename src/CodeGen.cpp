@@ -1,6 +1,6 @@
 #include "CodeGen.h"
 
-CodeGen::CodeGen(Lexer& lexer)
+CodeGen::CodeGen(Lexer &lexer)
 {
     tokens = lexer.tokens_;
     sp = 0;
@@ -66,7 +66,7 @@ void CodeGen::separateToFunctions()
     tokens.erase(tokens.begin(), lbrace);
     functions.push_back(list<Token>());
     functions.begin()->splice(functions.begin()->begin(), tokens, lbrace, ++rbrace);
-    
+
     /*
     * Занесение в список всех пользовательских функций
     * 
@@ -100,7 +100,7 @@ void CodeGen::separateToFunctions()
                     rbrace = i;
                     break;
                 }
-            } 
+            }
         }
         functions.push_back(list<Token>(tokens.begin(), rbrace));
         tokens.erase(tokens.begin(), ++rbrace);
@@ -127,7 +127,7 @@ void CodeGen::separateToFunctions()
     */
 }
 
-void CodeGen::separateFunc(list<Token>& func)
+void CodeGen::separateFunc(list<Token> &func)
 {
     int level = 0;
     int bp = 0;
@@ -163,7 +163,7 @@ void CodeGen::separateFunc(list<Token>& func)
             {
                 continue;
             }
-            else if (i->name == "Operator =")  // инициальзация переменных
+            else if (i->name == "Operator =") // инициальзация переменных
             {
                 if (type.token == "int" && itsarray) // массив не инициализируется
                 {
@@ -184,7 +184,43 @@ void CodeGen::separateFunc(list<Token>& func)
                 }
                 else if (type.token == "char" && itsarray)
                 {
-                    // доделать присвоение значения строки
+                    while (i->name != "String literal")
+                    {
+                        i++;
+                    }
+                    if (i->token.size() > size - 1)
+                    {
+                        throw Size_expression(i->token, i->row, i->col);
+                    }
+                    int shift = 0;
+                    auto j = i->token.begin();
+                    for (++j; *j != '"'; j++)
+                    {
+                        if (shift == 0)
+                        {
+                            text << "mov [rsp], byte '" << *j << "'" << endl;
+                            text << "mov [rsp + 1], byte 5" << endl;
+                            shift = 2;
+                        }
+                        else
+                        {
+                            text << "mov [rsp + " << shift++ << "], byte '" << *j << "'" << endl;
+                            text << "mov [rsp + " << shift++ << "], byte 5" << endl;
+                        }
+                    }
+                    text << "mov [rsp + " << shift++ << "], byte 0" << endl;
+                    text << "mov [rsp + " << shift++ << "], byte 0" << endl;
+                }
+                else if (type.token == "char")
+                {
+                    vector<Token> expr;
+                    while ((++i)->name != "Semi")
+                    {
+                        expr.push_back(*i);
+                    }
+                    translateToRpn(expr);
+                    processExpr(name, expr);
+                    text << "; translated initiation exrpession" << endl;
                 }
             }
         }
@@ -192,7 +228,7 @@ void CodeGen::separateFunc(list<Token>& func)
         {
             level++;
         }
-        else if (i->name == "Right brace") // закрытие блока 
+        else if (i->name == "Right brace") // закрытие блока
         {
             int addToSP = 0;
             for (auto j = hmap.begin(); j != hmap.end();)
@@ -216,11 +252,11 @@ void CodeGen::separateFunc(list<Token>& func)
         if (i->name == "Identifier")
         {
             auto ident = i;
-            if (i->token == "print")
+            if (i->token == "print") // Функция печати
             {
                 auto err = i;
                 i++;
-                auto toPrint = ++i, begin = i;  // begin - after (
+                auto toPrint = ++i, begin = i; // begin - after (
                 // Проверка на переданные параметры
                 int args = 0;
                 do
@@ -245,91 +281,41 @@ void CodeGen::separateFunc(list<Token>& func)
                 }
                 i = begin;
                 // Конец проверки
-                if ((++i)->name == "Left index") // Распечатать значение массива
+                if (hmap.find(toPrint->token) == hmap.end())
                 {
-                    //Продолжить отсюда, печать результата
-
+                    throw Ndefined_exception(toPrint->token, toPrint->row, toPrint->col);
                 }
-                else if (i->name == "String literal") // Рапечатать строку
+                /**
+                 *  Запись в eax значения, которое необходимо распечатать
+                 */
+                if ((++i)->name == "Right parenthesis" && (++i)->name == "Semi")
                 {
-
-                }
-                else if ((++i)->name == "Semi") // распечатать переменную
-                {
-                    if (hmap.find(toPrint->token) == hmap.end())
-                    {
-                        throw Ndefined_exception(toPrint->token, toPrint->row, toPrint->col);
-                    }
                     text << "mov r8, rbp" << endl;
                     text << "sub r8, " << hmap.find(toPrint->token)->second.address << endl;
-                    if (hmap.find(toPrint->token)->second.type == "char")
+                    text << "xor eax, eax" << endl;
+                    if (hmap.find(toPrint->token)->second.type == "char" && hmap.find(toPrint->token)->second.size == 2)
                     {
                         text << "mov ax, [r8]" << endl;
+                        printVariable(CHAR);
+                    }
+                    else if (hmap.find(toPrint->token)->second.type == "char" && hmap.find(toPrint->token)->second.size != 2)
+                    {
+                        text << "mov rax, r8" << endl;
+                        printVariable(STRING, hmap.find(toPrint->token)->second.address);
                     }
                     else
                     {
                         text << "mov eax, [r8]" << endl;
+                        printVariable(INT);
                     }
                     //В eax находится значение, которое необходимо распечатать
-                    //Копирование стека в зарезервированную в bss область
-                    text << "mov [saved_stack], rbp" << endl;
-                    text << "mov [saved_stack + 8], rsp" << endl;
-                    text << "mov r9, rbp" << endl;
-                    text << "sub r9, rsp" << endl;
-                    text << "mov r11, saved_stack" << endl;
-                    text << "add r11, 16" << endl;
-
-                    static int o = 0;
-                    text << "move" << o << ":" << "cmp r9, 0" << endl;
-                    text << "je out" << o << endl;
-                    text << "mov r10w, [rsp]" << endl;
-                    text << "mov [r11], r10w" << endl;
-                    text << "add rsp, 2" << endl;
-                    text << "sub r9, 2" << endl;
-                    text << "add r11, 2" << endl;
-                    text << "jmp move" << o << endl;
-                    text << "out" << o << ":" << endl;
-                    //Стек перенесен в зарезервированную область
-                    if (hmap.find(toPrint->token)->second.type == "char")
-                    {
-                        if (hmap.find(toPrint->token)->second.size == 2) // Печать одного символа
-                        {
-                            text << "mov rdi, formatchar" << endl;
-                            text << "mov esi, eax" << endl;
-                            text << "xor rax, rax" << endl;
-                            text << "call printf" << endl;
-                        }
-                        else // Печать строки
-                        {
-
-                        }
-                    }
-                    else if (hmap.find(toPrint->token)->second.type == "int")
-                    {
-                        text << "mov rdi, formatint" << endl;
-                        text << "mov esi, eax" << endl;
-                        text << "xor rax, rax" << endl;
-                        text << "call printf" << endl;
-                    }
-
-                    //Восстановление стека
-                    text << "mov rbp, [saved_stack]" << endl;
-                    text << "mov r8, rbp" << endl;
-                    text << "mov r9, [saved_stack + 8]" << endl;
-                    text << "sub r8, r9" << endl;
-                    text << "add r8, 16" << endl;
-                    text << "mov r10, saved_stack" << endl;
-                    text << "add r10, r8" << endl;
-                    text << "retur" << o << ":" << " cmp r8, 16" << endl;
-                    text << "je outt" << o << endl;
-                    text << "sub rsp, 2" << endl;
-                    text << "sub r10, 2" << endl;
-                    text << "mov r11w, [r10]" << endl;
-                    text << "mov [rsp], r11w" << endl;
-                    text << "sub r8, 2" << endl;
-                    text << "jmp retur" << o << endl;
-                    text << "outt" << o << ":" << endl;
-                    o++;
+                }
+                else if ((++i)->name == "Left index") // Распечатать значение массива
+                {
+                    //Продолжить отсюда, печать результата
+                }
+                else if (i->name == "String literal") // Рапечатать строку
+                {
                 }
             }
             else if ((++i)->name == "Operator =") // Присвоение значения переменной
@@ -353,10 +339,8 @@ void CodeGen::separateFunc(list<Token>& func)
  * В эту функцию передается выражение,  
  * переведенное в обратную польскую запись
 */
-void CodeGen::processExpr(Token left, vector<Token>& expression, int shift)
+void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
 {
-    cout << "name = " << left.token << endl;
-    printExpr(expression);
     for (auto i = expression.begin(); i != expression.end(); i++)
     {
         if (i->name == "Identifier")
@@ -376,7 +360,7 @@ void CodeGen::processExpr(Token left, vector<Token>& expression, int shift)
                 vector<Token> expr(start, i + 1);
                 getArrayValue(name.token, expr);
             }
-            else  // просто переменная
+            else // просто переменная
             {
                 text << "mov r8, rbp" << endl;
                 if (hmap.find(i->name)->second.type == "char")
@@ -398,6 +382,12 @@ void CodeGen::processExpr(Token left, vector<Token>& expression, int shift)
             }
         }
         else if (i->name == "Constant")
+        {
+            // text << "push " << i->token;
+            text << "sub rsp, 4" << endl;
+            text << "mov [rsp], dword " << i->token << endl;
+        }
+        else if (i->name == "Symbol")
         {
             // text << "push " << i->token;
             text << "sub rsp, 4" << endl;
@@ -444,7 +434,6 @@ void CodeGen::processExpr(Token left, vector<Token>& expression, int shift)
                 text << "div r8d" << endl;
                 text << "sub rsp, 4" << endl;
                 text << "mov [rsp], eax" << endl;
-
             }
         }
     }
@@ -459,7 +448,7 @@ void CodeGen::processExpr(Token left, vector<Token>& expression, int shift)
     //Сместились к этой переменной
     text << "mov r9, rbp" << endl;
     text << "sub r9, " << hmap.find(left.token)->second.address << endl;
-    
+
     if (shift != 0)
     {
         text << "add r9, " << shift << endl;
@@ -474,12 +463,11 @@ void CodeGen::processExpr(Token left, vector<Token>& expression, int shift)
     }
 }
 
-
 /**
  * Обработка случая, если в индекс массива вложен другой иднекс
  * после ее исполнения на вершине стека окажется 4х байтное необходимое значение
 */
-void CodeGen::getArrayValue(string& name, vector<Token> expression)
+void CodeGen::getArrayValue(string &name, vector<Token> expression)
 {
     cout << "trying to get array value of " << endl;
     printExpr(expression);
@@ -491,15 +479,15 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
             text << "sub rsp, 4" << endl;
             text << "mov [rsp], dword " << i->token << endl;
         }
-        else if (i->name == "Identifier")  // обработка идентификатора выражения
+        else if (i->name == "Identifier") // обработка идентификатора выражения
         {
             if (hmap.find(i->token) == hmap.end())
             {
                 throw Ndefined_exception(i->token, i->row, i->col);
             }
-            if ((i+1)->token == "[")
+            if ((i + 1)->token == "[")
             {
-                throw Nesting_exception((i+1)->token, (i+1)->row, (i+1)->col);
+                throw Nesting_exception((i + 1)->token, (i + 1)->row, (i + 1)->col);
             }
             else
             {
@@ -565,7 +553,6 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
                 text << "div r8d" << endl;
                 text << "sub rsp, 4" << endl;
                 text << "mov [rsp], eax" << endl;
-
             }
         }
     }
@@ -587,7 +574,7 @@ void CodeGen::getArrayValue(string& name, vector<Token> expression)
     text << "mov [rsp], r10d" << endl;
 }
 
-void CodeGen::translateToRpn(vector<Token>& expression)
+void CodeGen::translateToRpn(vector<Token> &expression)
 {
     vector<Token> stack;
     vector<Token> out;
@@ -598,9 +585,18 @@ void CodeGen::translateToRpn(vector<Token>& expression)
             out.push_back(*i);
             continue;
         }
+        if (i->name == "Symbol")
+        {
+            out.push_back(*i);
+            continue;
+        }
+        if (i->name == "String literal")
+        {
+            throw Wrong_expression(i->token, i->row, i->col);
+        }
         else if (i->name == "Identifier")
         {
-            if ((i + 1) != expression.end() && (i+1)->token == "[")
+            if ((i + 1) != expression.end() && (i + 1)->token == "[")
             {
                 /*
                 * Необходимо выполнить преобразование выражения, 
@@ -610,7 +606,7 @@ void CodeGen::translateToRpn(vector<Token>& expression)
                 out.push_back(*(++i));
                 vector<Token>::iterator start = i + 1;
                 int toSkip = 0;
-                while (1)//i->token != "]"
+                while (1) //i->token != "]"
                 {
                     if (i->token == "[")
                     {
@@ -637,7 +633,7 @@ void CodeGen::translateToRpn(vector<Token>& expression)
                 out.push_back(*i);
                 continue;
             }
-            else 
+            else
             {
                 out.push_back(*i);
                 continue;
@@ -714,7 +710,7 @@ void CodeGen::translateToRpn(vector<Token>& expression)
     expression = out;
 }
 
-void CodeGen::createSymbolicTable(list<Token>& func)
+void CodeGen::createSymbolicTable(list<Token> &func)
 {
     vector<string> variables;
     for (auto i = func.begin(); i != func.end(); i++)
@@ -727,9 +723,9 @@ void CodeGen::createSymbolicTable(list<Token>& func)
     symbolicTable.push_back(variables);
 }
 
-void CodeGen::addVariable(int size, Token& token, string& type, int level, int& bp)
+void CodeGen::addVariable(int size, Token &token, string &type, int level, int &bp)
 {
-    auto check = hmap.find(token.token); 
+    auto check = hmap.find(token.token);
     if (check != hmap.end() && check->second.level == level)
     {
         throw Mdefinition_exception(token.token, token.row, token.col);
@@ -756,6 +752,7 @@ void CodeGen::createAsm()
     asmfile << "formatchar db '%c', 0" << endl;
     asmfile << "section .bss" << endl;
     asmfile << "saved_stack: \t resw " << (reserved_memory) + 16 << "; this is the memory to copy stack to" << endl;
+    asmfile << "_last_value: \t resq 1" << endl;
     asmfile << "section .text" << endl;
     asmfile << "\tglobal main" << endl;
     asmfile << "main:" << endl;
@@ -764,8 +761,7 @@ void CodeGen::createAsm()
     asmfile << "ret" << endl;
 }
 
-
-void CodeGen::printExpr(vector<Token>& expr)
+void CodeGen::printExpr(vector<Token> &expr)
 {
     for (auto i = expr.begin(); i != expr.end(); i++)
     {
@@ -783,7 +779,69 @@ void CodeGen::printHashTable()
     }
 }
 
-void printVariable(bool integ)
+void CodeGen::printVariable(CodeGen::TYPE type, string address)
 {
-    
+    //Копирование стека в зарезервированную в bss область
+    text << "mov [saved_stack], rbp" << endl;
+    text << "mov [saved_stack + 8], rsp" << endl;
+    text << "mov r9, rbp" << endl;
+    text << "sub r9, rsp" << endl;
+    text << "mov r11, saved_stack" << endl;
+    text << "add r11, 16" << endl;
+
+    static int o = 0;
+    text << "move" << o << ":"
+         << "cmp r9, 0" << endl;
+    text << "je out" << o << endl;
+    text << "mov r10w, [rsp]" << endl;
+    text << "mov [r11], r10w" << endl;
+    text << "add rsp, 2" << endl;
+    text << "sub r9, 2" << endl;
+    text << "add r11, 2" << endl;
+    text << "jmp move" << o << endl;
+    text << "out" << o << ":" << endl;
+    text << "mov [_last_value], r11" << endl;
+    //Стек перенесен в зарезервированную область
+    if (type == CHAR)
+    {
+        text << "mov rdi, formatchar" << endl;
+        text << "mov esi, eax" << endl;
+        text << "xor rax, rax" << endl;
+        text << "call printf" << endl;
+    }
+    else if (type == INT)
+    {
+        text << "mov rdi, formatint" << endl;
+        text << "mov esi, eax" << endl;
+        text << "xor rax, rax" << endl;
+        text << "call printf" << endl;
+    }
+    else if (type == STRING)
+    {
+        text << "mov rdi, formatstr" << endl;
+        text << "mov r8, [_last_value]" << endl;
+        text << "sub r8, " << address << endl;
+        text << "mov rsi, r8" << endl;
+        text << "xor rax, rax" << endl;
+        text << "call printf" << endl;
+    }
+    //Восстановление стека
+    text << "mov rbp, [saved_stack]" << endl;
+    text << "mov r8, rbp" << endl;
+    text << "mov r9, [saved_stack + 8]" << endl;
+    text << "sub r8, r9" << endl;
+    text << "add r8, 16" << endl;
+    text << "mov r10, saved_stack" << endl;
+    text << "add r10, r8" << endl;
+    text << "retur" << o << ":"
+         << " cmp r8, 16" << endl;
+    text << "je outt" << o << endl;
+    text << "sub rsp, 2" << endl;
+    text << "sub r10, 2" << endl;
+    text << "mov r11w, [r10]" << endl;
+    text << "mov [rsp], r11w" << endl;
+    text << "sub r8, 2" << endl;
+    text << "jmp retur" << o << endl;
+    text << "outt" << o << ":" << endl;
+    o++;
 }

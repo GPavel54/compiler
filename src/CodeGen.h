@@ -28,6 +28,11 @@ class CodeGen
     stringstream text;
     stringstream asmfile;
 public:
+    enum TYPE{
+        CHAR,
+        INT,
+        STRING
+    };
     CodeGen(Lexer& lexer);
     void separateToFunctions(); // разбиение на функции
     void generateAsm();  // основная функция
@@ -40,7 +45,7 @@ public:
     void getArrayValue(string& name,vector<Token> expression); // помещает на вершину стэка требуемое значение
 
     /* Еще не до конца протестированные функции */
-    void printVariable(bool integ); // распечатывает значение, которое находится на вершине стека
+    void printVariable(TYPE type, string address = ""); // распечатывает значение, которое находится на вершине стека
 
     /* Debug functions */
     void printExpr(vector<Token>& expr);  // выражение

@@ -120,4 +120,22 @@ public:
     }
 };
 
+class Wrong_expression: public ASMG_exception
+{
+public:
+    Wrong_expression(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "Wrong expression: ";
+    }
+};
+
+class Size_expression: public ASMG_exception
+{
+public:
+    Size_expression(string& n, int r, int c) : ASMG_exception (n, r, c) 
+    {
+        message = "String literal bigger than array size: ";
+    }
+};
+
 #endif
