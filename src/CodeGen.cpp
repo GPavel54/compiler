@@ -310,9 +310,33 @@ void CodeGen::separateFunc(list<Token> &func)
                     }
                     //В eax находится значение, которое необходимо распечатать
                 }
-                else if ((++i)->name == "Left index") // Распечатать значение массива
+                else if (i->name == "Left index") // Распечатать значение массива
                 {
-                    //Продолжить отсюда, печать результата
+                    vector<Token> expres;
+                    while (i->name != "Right index")
+                    {
+                        expres.push_back(*i);
+                        i++;
+                    }
+                    translateToRpn(expres);
+                    processExpr(*toPrint, expres, -1);
+                    text << "mov r8, rbp" << endl;
+                    text << "sub r8, " << hmap.find(toPrint->token)->second.address << endl;
+                    text << "mov r9, r8" << endl;
+                    text << "shr r9, 32" << endl;
+                    text << "shl r9, 32" << endl;
+                    text << "add r8d, r12d" << endl;
+                    text << "or r8, r9" << endl;
+                    text << "mov eax, [r8]" << endl;
+
+                    if (hmap.find(toPrint->token)->second.type == "char")
+                    {
+                        printVariable(CHAR);
+                    }
+                    else 
+                    {
+                        printVariable(INT);
+                    }
                 }
                 else if (i->name == "String literal") // Рапечатать строку
                 {
@@ -341,10 +365,11 @@ void CodeGen::separateFunc(list<Token> &func)
                 translateToRpn(arrExpr);
                 processExpr(*ident, arrExpr, -1); // В регистре r12d теперь находится смещение от первого элемента массива
                 arrExpr.clear();
-                while ((i++)->name != "Semi")
+                while ((++i)->name != "Semi")
                 {
                     arrExpr.push_back(*i);
                 }
+                printExpr(arrExpr);
                 translateToRpn(arrExpr);
                 processExpr(*ident, arrExpr, -2);
             }
@@ -476,7 +501,7 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
             text << "mov ebx, 4" << endl;
         }
         text << "imul ebx" << endl;
-        text << "mov r12d, eax; shift from the start of array" << endl;
+        text << "mov r12d, eax; shift from the start of array" << endl; // В r12d находится смещение от начала массива
         return;
     }
     if (shift == -2)
