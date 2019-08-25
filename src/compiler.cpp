@@ -25,7 +25,6 @@ int main(int argc, char **argv)
     // cout << "Table of tokens:" << endl << endl;
     // lex.printTable();
 
-    cout << "Making syntax analysis..." << endl;
 
     Parser par;
     CodeGen cg(lex);
@@ -37,7 +36,10 @@ int main(int argc, char **argv)
     {
         return ex.what();
     }
-    try {
+    // cout << "Making syntax analysis..." << endl;
+    // par.printTree();
+    try 
+    {
         cg.generateAsm();
     }
     catch (ASMG_exception& ex)

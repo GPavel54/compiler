@@ -227,6 +227,7 @@ void CodeGen::separateFunc(list<Token> &func)
         else if (i->name == "Left brace") // открытие блока
         {
             level++;
+            blocksType.push_back(nextBlock);
         }
         else if (i->name == "Right brace") // закрытие блока
         {
@@ -248,6 +249,14 @@ void CodeGen::separateFunc(list<Token> &func)
                 memory_counter -= addToSP;
             }
             level--;
+            nextBlock = blocksType.back();
+            blocksType.pop_back();
+            if (nextBlock.type != "")
+            {
+                text << nextBlock.type << nextBlock.num << ":" << endl;
+                nextBlock.type = "";
+                nextBlock.num = 0;
+            }
         }
         if (i->name == "Identifier")
         {
@@ -333,7 +342,7 @@ void CodeGen::separateFunc(list<Token> &func)
                     {
                         printVariable(CHAR);
                     }
-                    else 
+                    else
                     {
                         printVariable(INT);
                     }
@@ -373,6 +382,96 @@ void CodeGen::separateFunc(list<Token> &func)
                 translateToRpn(arrExpr);
                 processExpr(*ident, arrExpr, -2);
             }
+        }
+        if ((i++)->name == "if") // обработка условия
+        {
+            //Обработка значения слева от знака
+            static int num = 0;
+            auto first = ++i;
+            cout << "first = " << first->token << endl;
+            text << ";Compare two values" << endl
+                 << "mov rax, rbp" << endl;
+            if (first->name == "Constant")
+            {
+                text << "mov r8d, " << i->token << endl;
+            }
+            else if (first->name == "Identifier" && (++i)->name != "Left index")
+            {
+                text << "sub rax, " << hmap.find(first->token)->second.address << endl;
+                if (hmap.find(first->token)->second.type == "int")
+                {
+                    text << "mov r8d, [rax]" << endl;
+                }
+                else
+                {
+                    text << "xor r8, r8" << endl;
+                    text << "mov r8b, [rax]" << endl;
+                }
+            }
+            else
+            {
+                vector<Token> expr;
+                while ((i++)->name != "Right index")
+                {
+                    expr.push_back(*i);
+                }
+                // getArrayValue();
+                // Доделать обработку переданного элемента массива
+            }
+            auto sign = ++i;
+            auto second = i;
+            if (second->name == "Constant")
+            {
+                text << "mov r9d, " << second->token << endl;
+            }
+            else if (second->name == "Identifier" && (++i)->name != "Left index")
+            {
+                text << "sub rax, " << hmap.find(second->token)->second.address << endl;
+                if (hmap.find(second->token)->second.type == "int")
+                {
+                    text << "mov r9d, [rax]" << endl;
+                }
+                else
+                {
+                    text << "xor r9, r9" << endl;
+                    text << "mov r9b, [rax]" << endl;
+                }
+            }
+            else
+            {
+                vector<Token> expr;
+                while ((i++)->name != "Right index")
+                {
+                    expr.push_back(*i);
+                }
+            }
+            text << "cmp r8, r9" << endl;
+            if (sign->token == "==")
+            {
+                text << "jne if" << num << endl;
+            }
+            else if (sign->token == ">")
+            {
+                text << "jle if" << num << endl;
+            }
+            else if (sign->token == "<")
+            {
+                text << "jge if" << num << endl;
+            }
+            else if (sign->token == ">=")
+            {
+                text << "jl if" << num << endl;
+            }
+            else if (sign->token == "<=")
+            {
+                text << "jg if" << num << endl;
+            }
+            else // !=
+            {
+                text << "je if" << num << endl;
+            }
+            nextBlock.type = "if";
+            nextBlock.num = num++;
         }
     }
 }
@@ -516,9 +615,10 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
 
         if (hmap.find(left.token)->second.type == "char")
         {
+            text << "or r8w, word 1280; set \005" << endl;
             text << "mov [r9], r8w; value to put to array" << endl;
         }
-        else 
+        else
         {
             text << "mov [r9], r8d; value to put to array" << endl;
         }

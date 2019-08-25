@@ -16,9 +16,16 @@ class CodeGen
         string address; // адрес это смещение от значения в регистре rbp
         int size;
     };
+    struct BlockInfo
+    {
+        string type;
+        int num;
+    };
     int sp;
     int reserved_memory, memory_counter;
     vector<vector<string> > symbolicTable;
+    vector<BlockInfo> blocksType;
+    BlockInfo nextBlock;
     list<Token> tokens;
     unordered_multimap<string, Info> hmap;
     list<list<Token> > functions;
