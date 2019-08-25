@@ -326,10 +326,27 @@ void CodeGen::separateFunc(list<Token> &func)
                     expr.push_back(*i);
                 }
                 translateToRpn(expr);
-                cout << "Expr after Translate" << endl;
-                printExpr(expr);
                 processExpr(*ident, expr);
                 text << "; translated exrpession" << endl;
+            }
+            else if (i->name == "Left index") // Присваивание значения элементу массива
+            {
+                vector<Token> arrExpr;
+                while (i->name != "Right index")
+                {
+                    i++;
+                    arrExpr.push_back(*i);
+                }
+                arrExpr.pop_back();
+                translateToRpn(arrExpr);
+                processExpr(*ident, arrExpr, -1); // В регистре r12d теперь находится смещение от первого элемента массива
+                arrExpr.clear();
+                while ((i++)->name != "Semi")
+                {
+                    arrExpr.push_back(*i);
+                }
+                translateToRpn(arrExpr);
+                processExpr(*ident, arrExpr, -2);
             }
         }
     }
@@ -341,6 +358,7 @@ void CodeGen::separateFunc(list<Token> &func)
 */
 void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
 {
+    printExpr(expression);
     for (auto i = expression.begin(); i != expression.end(); i++)
     {
         if (i->name == "Identifier")
@@ -445,6 +463,43 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
     text << "mov r8d, [rsp]" << endl;
     text << "add rsp, 4" << endl;
 
+    if (shift == -1) //Значит необходимо вычислить смещение от начала массива
+    {
+        text << "mov r12d, r8d" << endl;
+        text << "mov eax, r12d" << endl;
+        if (hmap.find(left.token)->second.type == "char")
+        {
+            text << "mov ebx, 2" << endl;
+        }
+        else
+        {
+            text << "mov ebx, 4" << endl;
+        }
+        text << "imul ebx" << endl;
+        text << "mov r12d, eax; shift from the start of array" << endl;
+        return;
+    }
+    if (shift == -2)
+    {
+        text << "mov r9, rbp" << endl;
+        text << "sub r9, " << hmap.find(left.token)->second.address << endl;
+        text << "mov r10, r9" << endl;
+        text << "shr r10, 32" << endl;
+        text << "shl r10, 32" << endl;
+        text << "add r9d, r12d" << endl;
+        text << "or r9, r10" << endl;
+
+        if (hmap.find(left.token)->second.type == "char")
+        {
+            text << "mov [r9], r8w; value to put to array" << endl;
+        }
+        else 
+        {
+            text << "mov [r9], r8d; value to put to array" << endl;
+        }
+        return;
+    }
+
     //Сместились к этой переменной
     text << "mov r9, rbp" << endl;
     text << "sub r9, " << hmap.find(left.token)->second.address << endl;
@@ -464,7 +519,7 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
 }
 
 /**
- * Обработка случая, если в индекс массива вложен другой иднекс
+ * Обработка случая, если в индекс массива вложен другой индекс
  * после ее исполнения на вершине стека окажется 4х байтное необходимое значение
 */
 void CodeGen::getArrayValue(string &name, vector<Token> expression)
