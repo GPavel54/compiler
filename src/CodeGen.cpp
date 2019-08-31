@@ -251,7 +251,28 @@ void CodeGen::separateFunc(list<Token> &func)
             level--;
             nextBlock = blocksType.back();
             blocksType.pop_back();
-            if (nextBlock.type != "")
+            i++;
+            if (i == func.end() || i->name != "else")
+            {
+                i--;
+            }
+            if (nextBlock.type == "if" && i->name != "else")
+            {
+                text << nextBlock.type << nextBlock.num << ":" << endl;
+                nextBlock.type = "";
+                nextBlock.num = 0;
+            }
+            else if (nextBlock.type == "if" && i->name == "else")
+            {
+                static int outif = 0;
+                outif++;
+                text << "jmp outelse" << outif << endl;
+                text << nextBlock.type << nextBlock.num << ":" << endl;
+                nextBlock.type = "outelse";
+                nextBlock.num = outif;
+                continue;
+            }
+            else if (nextBlock.type == "outelse")
             {
                 text << nextBlock.type << nextBlock.num << ":" << endl;
                 nextBlock.type = "";
@@ -383,10 +404,11 @@ void CodeGen::separateFunc(list<Token> &func)
                 processExpr(*ident, arrExpr, -2);
             }
         }
-        if ((i++)->name == "if") // обработка условия
+        if (i->name == "if") // обработка условия
         {
             //Обработка значения слева от знака
             static int num = 0;
+            i++;
             auto first = ++i;
             cout << "first = " << first->token << endl;
             text << ";Compare two values" << endl
@@ -418,7 +440,7 @@ void CodeGen::separateFunc(list<Token> &func)
                 // getArrayValue();
                 // Доделать обработку переданного элемента массива
             }
-            auto sign = ++i;
+            auto sign = i++;
             auto second = i;
             if (second->name == "Constant")
             {
@@ -445,7 +467,7 @@ void CodeGen::separateFunc(list<Token> &func)
                     expr.push_back(*i);
                 }
             }
-            text << "cmp r8, r9" << endl;
+            text << "cmp r8d, r9d" << endl;
             if (sign->token == "==")
             {
                 text << "jne if" << num << endl;
@@ -472,6 +494,10 @@ void CodeGen::separateFunc(list<Token> &func)
             }
             nextBlock.type = "if";
             nextBlock.num = num++;
+        }
+        if (i->name == "else")
+        {
+            
         }
     }
 }
@@ -504,11 +530,12 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
             }
             else // просто переменная
             {
+                i--;
                 text << "mov r8, rbp" << endl;
-                if (hmap.find(i->name)->second.type == "char")
+                if (hmap.find(i->token)->second.type == "char")
                 {
                     text << "xor eax, eax" << endl;
-                    text << "sub r8, " << hmap.find(i->name)->second.address << endl;
+                    text << "sub r8, " << hmap.find(i->token)->second.address << endl;
                     text << "sub rsp, 4" << endl;
                     text << "mov ax, [r8]" << endl;
                     text << "mov [rsp], eax" << endl;
@@ -516,7 +543,7 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
                 else
                 {
                     text << "xor eax, eax" << endl;
-                    text << "sub r8, " << hmap.find(i->name)->second.address << endl;
+                    text << "sub r8, " << hmap.find(i->token)->second.address << endl;
                     text << "sub rsp, 4" << endl;
                     text << "mov eax, [r8]" << endl;
                     text << "mov [rsp], eax" << endl;
