@@ -8,10 +8,15 @@ const static string PREFIX = "\033[1;31mError:\033[0;0m ";
 
 class Open_exception: public std::exception
 {
+    string path;
 public:
+    Open_exception(string p)
+    {
+        path = p;
+    }
     int what()
     {
-        cerr << PREFIX << "Cant open file" << endl;
+        cerr << PREFIX << "Can't open file - " << path << endl;
         return 1;
     }
 };

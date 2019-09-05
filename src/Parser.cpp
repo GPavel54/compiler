@@ -11,7 +11,7 @@ Parser::Parser()
     in.open("table.txt", ifstream::in);
     if (!in.is_open())
     {
-        throw (Open_exception());
+        throw (Open_exception("table.txt"));
     }
     string buffer;
     commands.push_back("");

@@ -31,10 +31,11 @@ void Lexer::getType(string &word, string &type)
 void Lexer::makeTable(string path)
 {
     ifstream in;
+    system("pwd");
     in.open(path, ifstream::in);
     if (!in.is_open())
     {
-        throw (Open_exception());
+        throw (Open_exception(path));
     }
     string buffer;
     initializeMap();

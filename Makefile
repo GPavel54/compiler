@@ -1,7 +1,7 @@
 all: compiler.o Lexer.o Parser.o CodeGen.o functions.o compiler
 
 compiler.o: src/compiler.cpp
-	mkdir -p build bin
+	mkdir -p build bin assembler
 	g++ -Wall --std=c++11 -c -o build/compiler.o src/compiler.cpp -g
 Lexer.o: src/Lexer.cpp
 	g++ -Wall --std=c++11 -c -o build/Lexer.o src/Lexer.cpp -g
@@ -16,3 +16,5 @@ compiler:
 clean:
 	rm build/*.o
 	rm bin/compiler
+build_tests:
+	gcc -Wall -o run_all tests/main.c tests/alltests.c

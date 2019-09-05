@@ -8,15 +8,21 @@ CodeGen::CodeGen(Lexer &lexer)
     memory_counter = 0;
 }
 
-void CodeGen::generateAsm()
+void CodeGen::generateAsm(string path)
 {
     separateToFunctions();
     createSymbolicTable(*(functions.begin()));
     separateFunc(*(functions.begin()));
 
-    cout << "ASM: " << endl;
     createAsm();
-    cout << asmfile.str() << endl;
+    ofstream outfile;
+    outfile.open(path,fstream::out);
+    if (!outfile.is_open())
+    {
+        throw (Open_exception(path));
+    } 
+    outfile << asmfile.str() << endl;
+    outfile.close();
 }
 
 void CodeGen::separateToFunctions()
@@ -177,8 +183,6 @@ void CodeGen::separateFunc(list<Token> &func)
                         expr.push_back(*i);
                     }
                     translateToRpn(expr);
-                    cout << "Expr after Translate" << endl;
-                    printExpr(expr);
                     processExpr(name, expr);
                     text << "; translated initiation exrpession" << endl;
                 }
@@ -410,7 +414,6 @@ void CodeGen::separateFunc(list<Token> &func)
             static int num = 0;
             i++;
             auto first = ++i;
-            cout << "first = " << first->token << endl;
             text << ";Compare two values" << endl
                  << "mov rax, rbp" << endl;
             if (first->name == "Constant")
@@ -508,7 +511,6 @@ void CodeGen::separateFunc(list<Token> &func)
 */
 void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
 {
-    printExpr(expression);
     for (auto i = expression.begin(); i != expression.end(); i++)
     {
         if (i->name == "Identifier")
@@ -676,7 +678,6 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
 */
 void CodeGen::getArrayValue(string &name, vector<Token> expression)
 {
-    cout << "trying to get array value of " << endl;
     printExpr(expression);
     for (auto i = expression.begin(); i != expression.end(); i++)
     {

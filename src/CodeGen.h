@@ -42,7 +42,7 @@ public:
     };
     CodeGen(Lexer& lexer);
     void separateToFunctions(); // разбиение на функции
-    void generateAsm();  // основная функция
+    void generateAsm(string path);  // основная функция
     void separateFunc(list<Token>& func);  // обработка функций
     void processExpr(Token left, vector<Token>& expression, int shift = 0); // обработка выражения
     void translateToRpn(vector<Token>& expression); // перевод переданного выражения в обратную польскую запись

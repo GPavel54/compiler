@@ -40,10 +40,14 @@ int main(int argc, char **argv)
     // par.printTree();
     try 
     {
-        cg.generateAsm();
+        cg.generateAsm(argv[2]);
     }
     catch (ASMG_exception& ex)
     {
+        return ex.what();
+    }
+    catch (Open_exception& ex)
+    {   
         return ex.what();
     }
 }
