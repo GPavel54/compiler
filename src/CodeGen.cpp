@@ -451,8 +451,12 @@ void CodeGen::separateFunc(list<Token> &func)
                 {
                     expr.push_back(*i);
                 }
-                // getArrayValue();
-                // Доделать обработку переданного элемента массива
+                text << "beforeget:" << endl;
+                getArrayValue(first->token, expr);
+                text << "afterget:" << endl;
+                text << "mov r8d, [rsp]" << endl;
+                text << "add rsp, 4" << endl;
+                // todo
             }
             auto sign = i++;
             auto second = i;
@@ -480,6 +484,7 @@ void CodeGen::separateFunc(list<Token> &func)
                 {
                     expr.push_back(*i);
                 }
+                //todo
             }
             text << "cmp r8d, r9d" << endl;
             if (sign->token == "==")
@@ -790,7 +795,6 @@ void CodeGen::processExpr(Token left, vector<Token> &expression, int shift)
 */
 void CodeGen::getArrayValue(string &name, vector<Token> expression)
 {
-    printExpr(expression);
     for (auto i = expression.begin(); i != expression.end(); i++)
     {
         if (i->name == "Constant")
@@ -881,6 +885,14 @@ void CodeGen::getArrayValue(string &name, vector<Token> expression)
      * теперь необходимо вместо этого смещения поместить нужное значение
     */
     text << "mov r8d, [rsp]" << endl;
+    if (hmap.find(name)->second.type == "char")
+    {
+        text << "imul r8d, 2" << endl; 
+    }
+    else
+    {
+        text << "imul r8d, 4" << endl;
+    }
     text << "add rsp, 4" << endl;
     text << "mov r9, rbp" << endl;
     text << "sub r9, " << hmap.find(name)->second.address << endl;

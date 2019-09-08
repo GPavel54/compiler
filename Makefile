@@ -24,4 +24,5 @@ ctests:
 	rm run_all
 	rm string
 	rm while
+	rm ifarr
 	rm assembler/*.o

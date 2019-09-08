@@ -163,7 +163,7 @@ CTEST(alltests, string)
 
 CTEST(alltests, loop)
 {
-    CTEST_LOG("Testing whiel loop...");
+    CTEST_LOG("Testing while loop...");
     CTEST_LOG("Compiling...");
     system("bin/compiler progs/while.cs assembler/while.asm");
     CTEST_LOG("Making object file...");
@@ -193,6 +193,46 @@ CTEST(alltests, loop)
     CTEST_LOG("Length = %ld", strlen(str));
     CTEST_LOG("Program returned: %s, expected 53", str);
     if (strcmp(str, "53 ") == 0)
+    {
+        u = 1;
+    }
+    ASSERT_EQUAL(1, u);
+    system("rm out.txt");
+    fclose(fp);
+}
+
+CTEST(alltests, array_test)
+{
+    CTEST_LOG("Testing operation with array...");
+    CTEST_LOG("Compiling...");
+    system("bin/compiler progs/ifarr.cs assembler/ifarr.asm");
+    CTEST_LOG("Making object file...");
+    system("nasm -f elf64 assembler/ifarr.asm -o assembler/ifarr.o");
+    CTEST_LOG("Linking...");
+    system("gcc -no-pie assembler/ifarr.o -o ifarr");
+    CTEST_LOG("Executing...");
+    system("./ifarr > out.txt");
+    sleep(1);
+
+    char ch;
+    FILE *fp;
+    fp = fopen("out.txt", "r");
+    if (fp == NULL)
+    {
+        CTEST_LOG("out file doesn't exist. Test failed");
+        ASSERT_EQUAL(1, 2);
+        return;
+    }
+    char str[20] = "";
+    int index = 0;
+    while ((ch = fgetc(fp)) != EOF)
+    {
+        str[index++] = ch;
+    }
+    int u = 0;
+    CTEST_LOG("Length = %ld", strlen(str));
+    CTEST_LOG("Program returned: %s, expected 44 \n 11", str);
+    if (strcmp(str, "44 \n11 ") == 0)
     {
         u = 1;
     }
