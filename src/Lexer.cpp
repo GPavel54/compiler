@@ -31,7 +31,6 @@ void Lexer::getType(string &word, string &type)
 void Lexer::makeTable(string path)
 {
     ifstream in;
-    system("pwd");
     in.open(path, ifstream::in);
     if (!in.is_open())
     {
@@ -182,7 +181,7 @@ void Lexer::initializeMap()
     expressions_.push_back(tmp);
 
     tmp.name = "String literal";
-    tmp.expression = "^\"[a-zA-Z0-9\\s+-=!]*\"";
+    tmp.expression = "^\"[a-zA-Z0-9\\s+-=! _]*\"";
     expressions_.push_back(tmp);
 
     tmp.name = "Identifier";

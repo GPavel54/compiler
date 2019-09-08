@@ -3,6 +3,7 @@
 #include "addfunctions.h"
 #include "Lexer.h"
 #include <unordered_map>
+#include <sstream>
 
 #define FUNCTION_ 444
 
@@ -20,12 +21,19 @@ class CodeGen
     {
         string type;
         int num;
+        string toPaste;
+    };
+    struct BreakNum
+    {
+        bool needBreak;
+        int num;
     };
     int sp;
     int reserved_memory, memory_counter;
     vector<vector<string> > symbolicTable;
     vector<BlockInfo> blocksType;
     BlockInfo nextBlock;
+    BreakNum nbreak;
     list<Token> tokens;
     unordered_multimap<string, Info> hmap;
     list<list<Token> > functions;

@@ -6,6 +6,8 @@ CodeGen::CodeGen(Lexer &lexer)
     sp = 0;
     reserved_memory = 0;
     memory_counter = 0;
+    nbreak.needBreak = false;
+    nbreak.num = 0;
 }
 
 void CodeGen::generateAsm(string path)
@@ -282,8 +284,18 @@ void CodeGen::separateFunc(list<Token> &func)
                 nextBlock.type = "";
                 nextBlock.num = 0;
             }
+            else if (nextBlock.type == "while")
+            {
+                text << ";While comparison below" << endl;
+                text << nextBlock.toPaste << endl;
+                if (nbreak.needBreak == true)
+                {
+                    nbreak.needBreak = false;
+                    text << "break" << nbreak.num << ":" << endl;
+                }
+            }
         }
-        if (i->name == "Identifier")
+        else if (i->name == "Identifier")
         {
             auto ident = i;
             if (i->token == "print") // Функция печати
@@ -403,12 +415,11 @@ void CodeGen::separateFunc(list<Token> &func)
                 {
                     arrExpr.push_back(*i);
                 }
-                printExpr(arrExpr);
                 translateToRpn(arrExpr);
                 processExpr(*ident, arrExpr, -2);
             }
         }
-        if (i->name == "if") // обработка условия
+        else if (i->name == "if") // обработка условия
         {
             //Обработка значения слева от знака
             static int num = 0;
@@ -498,9 +509,110 @@ void CodeGen::separateFunc(list<Token> &func)
             nextBlock.type = "if";
             nextBlock.num = num++;
         }
-        if (i->name == "else")
+        else if (i->name == "while")
         {
-            
+            static int o = 0;
+            i++;
+            auto first = ++i;
+            nextBlock.type = "while";
+            nextBlock.num = o;
+            stringstream preparedCode;
+            preparedCode << ";Compare two values" << endl
+                 << "mov rax, rbp" << endl;
+            if (first->name == "Constant")
+            {
+                preparedCode << "mov r8d, " << i->token << endl;
+            }
+            else if (first->name == "Identifier" && (++i)->name != "Left index")
+            {
+                preparedCode << "sub rax, " << hmap.find(first->token)->second.address << endl;
+                if (hmap.find(first->token)->second.type == "int")
+                {
+                    preparedCode << "mov r8d, [rax]" << endl;
+                }
+                else
+                {
+                    preparedCode << "xor r8, r8" << endl;
+                    preparedCode << "mov r8b, [rax]" << endl;
+                }
+            }
+            else
+            {
+                vector<Token> expr;
+                while ((i++)->name != "Right index")
+                {
+                    expr.push_back(*i);
+                }
+                // getArrayValue();
+                // Доделать обработку переданного элемента массива
+            }
+            auto sign = i++;
+            auto second = i;
+            if (second->name == "Constant")
+            {
+                preparedCode << "mov r9d, " << second->token << endl;
+            }
+            else if (second->name == "Identifier" && (++i)->name != "Left index")
+            {
+                preparedCode << "sub rax, " << hmap.find(second->token)->second.address << endl;
+                if (hmap.find(second->token)->second.type == "int")
+                {
+                    preparedCode << "mov r9d, [rax]" << endl;
+                }
+                else
+                {
+                    preparedCode << "xor r9, r9" << endl;
+                    preparedCode << "mov r9b, [rax]" << endl;
+                }
+            }
+            else
+            {
+                vector<Token> expr;
+                while ((i++)->name != "Right index")
+                {
+                    expr.push_back(*i);
+                }
+            }
+            preparedCode << "cmp r8d, r9d" << endl;
+            if (sign->token == "==")
+            {
+                preparedCode << "je while" << o << endl;
+            }
+            else if (sign->token == ">")
+            {
+                preparedCode << "jge while" << o << endl;
+            }
+            else if (sign->token == "<")
+            {
+                preparedCode << "jle while" << o << endl;
+            }
+            else if (sign->token == ">=")
+            {
+                preparedCode << "jg while" << o << endl;
+            }
+            else if (sign->token == "<=")
+            {
+                preparedCode << "jl while" << o << endl;
+            }
+            else // !=
+            {
+                preparedCode << "jne while" << o << endl;
+            }
+            text << "while" << o << ":" << endl;
+            nextBlock.toPaste = preparedCode.str();
+            o++;
+        }
+        else if (i->name == "break")
+        {
+            static int br_n = 0;
+            if (nbreak.needBreak == true)
+            {
+                continue;
+            }
+            nbreak.needBreak = true;
+            nbreak.num = br_n;
+            text << "jmp break" << br_n << endl;
+            br_n++;
         }
     }
 }
