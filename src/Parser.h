@@ -9,25 +9,7 @@
 
 class Parser
 {
-    struct treeNode
-    {
-        string name;
-        string token;
-        treeNode * nodes;
-        int size;
-        bool terminal;
-        void setEmpty();
-        void printTree(treeNode& tn);
-    };
-    struct toPrintSt
-    {
-        treeNode * tn;
-        int layer;
-    };
     vector<ParsElem> stack;
-    stringstream tree;
-    treeNode syntaxTree;
-    vector<treeNode *> products;
     vector<string> commands;
 
     int uncover(Token& token, int rule);
