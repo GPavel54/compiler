@@ -8,7 +8,7 @@ class Lexer
     vector<expre> expressions_;
     friend class Parser;
     friend class CodeGen;
-    friend class SyntaxTree;
+    friend class IR;
 public:
     Lexer();
     void initializeMap();

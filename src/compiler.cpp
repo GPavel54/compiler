@@ -1,7 +1,7 @@
 #include "Lexer.h"
 #include "Parser.h"
 #include "CodeGen.h"
-#include "SyntaxTree.h"
+#include "IR.h"
 
 int main(int argc, char **argv)
 {
@@ -27,8 +27,16 @@ int main(int argc, char **argv)
     // lex.printTable();
 
     Parser par;
+    IR ir(lex);
     CodeGen cg(lex);
-    SyntaxTree st(lex);
+    try
+    {
+        ir.generateIR();
+    }
+    catch (ASMG_exception& ex)
+    {
+        return ex.what();
+    }
     try 
     {
         par.makeSyntaxTree(lex);
@@ -37,7 +45,6 @@ int main(int argc, char **argv)
     {
         return ex.what();
     }
-    st.makeSyntaxTree();
     try 
     {
         cg.generateAsm(argv[2]);
